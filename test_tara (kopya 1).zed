@@ -1,3 +1,0 @@
-aktar "interpreter.zed";
-degisken t = tara("yaz 42;");
-yaz uzunluk(t);
