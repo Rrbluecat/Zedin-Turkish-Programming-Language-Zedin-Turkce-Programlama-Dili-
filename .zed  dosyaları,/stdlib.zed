@@ -1,0 +1,20 @@
+// Zedin Standart Kütüphanesi
+
+fonk mutlak(x) {
+    eger x < 0 { don x * -1; }
+    don x;
+}
+
+fonk maks(a, b) {
+    eger a > b { don a; }
+    don b;
+}
+
+fonk min(a, b) {
+    eger a < b { don a; }
+    don b;
+}
+
+fonk kare(x) {
+    don x * x;
+}

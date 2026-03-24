@@ -1,0 +1,92 @@
+// ============================================================
+// sistem.zed - Zedin Sistem Modülü v1.0
+// Kullanım: aktar "sistem";
+// ============================================================
+
+// Komut çalıştır ve çıktısını al
+fonk calistir(komut) {
+    degisken sonuc = komut_calistir(komut);
+    eger hata_mi(sonuc) {
+        don "";
+    }
+    don deger_al(sonuc);
+}
+
+// Ortam değişkeni oku
+fonk env(ad) {
+    don ortam_degiskeni(ad);
+}
+
+// HOME klasörü
+fonk ev_klasoru() {
+    don ortam_degiskeni("HOME");
+}
+
+// Kullanıcı adı
+fonk kullanici() {
+    don ortam_degiskeni("USER");
+}
+
+// Mevcut klasör
+fonk klasor() {
+    degisken sonuc = komut_calistir("pwd");
+    eger tamam_mi(sonuc) {
+        degisken yol = deger_al(sonuc);
+        // Son \n karakterini kaldir
+        eger uzunluk(yol) > 0 {
+            eger yol[uzunluk(yol) - 1] == "\n" {
+                degisken temiz = "";
+                degisken i = 0;
+                iken i < uzunluk(yol) - 1 {
+                    temiz = temiz + yol[i];
+                    i = i + 1;
+                }
+                don temiz;
+            }
+        }
+        don yol;
+    }
+    don "";
+}
+
+// Dosya listesi
+fonk dosyalar(klasor_yolu) {
+    degisken sonuc = komut_calistir("ls " + klasor_yolu);
+    eger hata_mi(sonuc) { don []; }
+    degisken cikti = deger_al(sonuc);
+    degisken liste = [];
+    degisken satir = "";
+    degisken i = 0;
+    iken i < uzunluk(cikti) {
+        eger cikti[i] == "\n" {
+            eger uzunluk(satir) > 0 {
+                ekle(liste, satir);
+                satir = "";
+            }
+        } yoksa {
+            satir = satir + cikti[i];
+        }
+        i = i + 1;
+    }
+    don liste;
+}
+
+// Platform bilgisi
+fonk platform() {
+    degisken sonuc = komut_calistir("uname -s");
+    eger tamam_mi(sonuc) { don deger_al(sonuc); }
+    don "bilinmiyor";
+}
+
+// Bellek kullanımı (MB)
+fonk bellek_kullanimi() {
+    degisken sonuc = komut_calistir("free -m | awk 'NR==2{print $3}'");
+    eger tamam_mi(sonuc) { don sayiya(deger_al(sonuc)); }
+    don 0;
+}
+
+// Uyku (saniye)
+fonk uyku(saniye) {
+    komut_calistir("sleep " + metine(saniye));
+}
+

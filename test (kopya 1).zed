@@ -1,0 +1,125 @@
+// ============================================================
+// test.zed - Zedin Birim Test Framework v1.0
+// Kullanım: aktar "test";
+// ============================================================
+
+degisken _test_gecen = 0;
+degisken _test_kalan = 0;
+degisken _test_toplam = 0;
+degisken _aktif_suite = "";
+
+// Test suite başlat
+fonk suite(ad) {
+    _aktif_suite = ad;
+    yaz "\n[SUITE] " + ad;
+    yaz "─────────────────────────";
+}
+
+// Temel assert
+fonk assert(kosul, mesaj) {
+    _test_toplam = _test_toplam + 1;
+    eger kosul {
+        _test_gecen = _test_gecen + 1;
+        yaz "  ✓ " + mesaj;
+        don tuz;
+    }
+    _test_kalan = _test_kalan + 1;
+    yaz "  ✗ " + mesaj;
+    don ters;
+}
+
+// Eşitlik testi
+fonk esit(beklenen, gercek, mesaj) {
+    _test_toplam = _test_toplam + 1;
+    eger beklenen == gercek {
+        _test_gecen = _test_gecen + 1;
+        yaz "  ✓ " + mesaj;
+        don tuz;
+    }
+    _test_kalan = _test_kalan + 1;
+    yaz "  ✗ " + mesaj;
+    yaz "    Beklenen: " + metine(beklenen);
+    yaz "    Gerçek  : " + metine(gercek);
+    don ters;
+}
+
+// Eşit değil testi
+fonk esit_degil(a, b, mesaj) {
+    _test_toplam = _test_toplam + 1;
+    eger a != b {
+        _test_gecen = _test_gecen + 1;
+        yaz "  ✓ " + mesaj;
+        don tuz;
+    }
+    _test_kalan = _test_kalan + 1;
+    yaz "  ✗ " + mesaj;
+    yaz "    Her ikisi de: " + metine(a);
+    don ters;
+}
+
+// Büyüktür testi
+fonk buyuk(deger, esik, mesaj) {
+    don assert(deger > esik, mesaj);
+}
+
+// Küçüktür testi
+fonk kucuk(deger, esik, mesaj) {
+    don assert(deger < esik, mesaj);
+}
+
+// True testi
+fonk tuz_mu(deger, mesaj) {
+    don assert(deger == tuz, mesaj);
+}
+
+// False testi
+fonk ters_mi(deger, mesaj) {
+    don assert(deger == ters, mesaj);
+}
+
+// Boş liste testi
+fonk bos_liste(lst, mesaj) {
+    don assert(uzunluk(lst) == 0, mesaj);
+}
+
+// Dolu liste testi
+fonk dolu_liste(lst, mesaj) {
+    don assert(uzunluk(lst) > 0, mesaj);
+}
+
+// Yaklaşık eşitlik (float karşılaştırma)
+fonk yaklasik(beklenen, gercek, tolerans, mesaj) {
+    degisken fark = beklenen - gercek;
+    eger fark < 0 { fark = fark * -1; }
+    don assert(fark <= tolerans, mesaj);
+}
+
+// Test özeti
+fonk ozet() {
+    yaz "\n══════════════════════════";
+    yaz "  TEST ÖZETI";
+    yaz "══════════════════════════";
+    yaz "  Geçen : " + metine(_test_gecen) + " ✓";
+    yaz "  Kalan : " + metine(_test_kalan) + " ✗";
+    yaz "  Toplam: " + metine(_test_toplam);
+    eger _test_toplam > 0 {
+        degisken oran = (_test_gecen * 100) / _test_toplam;
+        yaz "  Başarı: %" + metine(oran);
+    }
+    yaz "══════════════════════════";
+    eger _test_kalan == 0 {
+        yaz "  Tüm testler geçti! 🎉";
+    } yoksa {
+        yaz "  " + metine(_test_kalan) + " test başarısız!";
+    }
+    yaz "══════════════════════════";
+    don _test_kalan == 0;
+}
+
+// Sayaçları sıfırla
+fonk sifirla() {
+    _test_gecen = 0;
+    _test_kalan = 0;
+    _test_toplam = 0;
+}
+

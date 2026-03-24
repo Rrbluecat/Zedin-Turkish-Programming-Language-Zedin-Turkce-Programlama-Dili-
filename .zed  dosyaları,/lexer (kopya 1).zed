@@ -1,0 +1,187 @@
+// ============================================================
+// lexer.zed - Zedin ile yazilmis Zedin Lexer (Self-hosting v1)
+// ============================================================
+
+// --- Yardimci fonksiyonlar ---
+
+fonk harf_mi(k) {
+    don (k == "a" veya k == "b" veya k == "c" veya k == "d" veya
+         k == "e" veya k == "f" veya k == "g" veya k == "h" veya
+         k == "i" veya k == "j" veya k == "k" veya k == "l" veya
+         k == "m" veya k == "n" veya k == "o" veya k == "p" veya k == "q" veya
+         k == "r" veya k == "s" veya k == "t" veya k == "u" veya
+         k == "v" veya k == "x" veya k == "y" veya k == "z" veya
+         k == "A" veya k == "B" veya k == "C" veya k == "D" veya
+         k == "E" veya k == "F" veya k == "G" veya k == "H" veya
+         k == "I" veya k == "J" veya k == "K" veya k == "L" veya
+         k == "M" veya k == "N" veya k == "O" veya k == "P" veya k == "Q" veya
+         k == "R" veya k == "S" veya k == "T" veya k == "U" veya
+         k == "V" veya k == "X" veya k == "Y" veya k == "Z" veya k == "_");
+}
+
+fonk rakam_mi(k) {
+    don (k == "0" veya k == "1" veya k == "2" veya k == "3" veya
+         k == "4" veya k == "5" veya k == "6" veya k == "7" veya
+         k == "8" veya k == "9");
+}
+
+fonk bosluk_mu(k) {
+    don (k == " " veya k == "\t" veya k == "\n");
+}
+
+// --- Token olusturucu ---
+fonk token_yaz(tip, deger) {
+    yaz "[" + tip + ":" + deger + "]";
+}
+
+// --- Ana Lexer ---
+fonk tara(kaynak) {
+    degisken i = 0;
+    degisken boy = uzunluk(kaynak);
+
+    iken i < boy {
+        degisken k = kaynak[i];
+
+        // Bosluklari atla
+        eger bosluk_mu(k) {
+            i = i + 1;
+            devam;
+        }
+
+        // Sayi
+        eger rakam_mi(k) {
+            degisken sayi = "";
+            iken i < boy ve rakam_mi(kaynak[i]) {
+                sayi = sayi + kaynak[i];
+                i = i + 1;
+            }
+            token_yaz("SAYI", sayi);
+            devam;
+        }
+
+        // Tanimlayici veya keyword
+        eger harf_mi(k) {
+            degisken kelime = "";
+            iken i < boy ve (harf_mi(kaynak[i]) veya rakam_mi(kaynak[i])) {
+                kelime = kelime + kaynak[i];
+                i = i + 1;
+            }
+            // Keyword kontrolu
+            eger kelime == "yaz"       { token_yaz("KEYWORD", kelime); devam; }
+            eger kelime == "eger"      { token_yaz("KEYWORD", kelime); devam; }
+            eger kelime == "iken"      { token_yaz("KEYWORD", kelime); devam; }
+            eger kelime == "fonk"      { token_yaz("KEYWORD", kelime); devam; }
+            eger kelime == "don"       { token_yaz("KEYWORD", kelime); devam; }
+            eger kelime == "degisken"  { token_yaz("KEYWORD", kelime); devam; }
+            eger kelime == "yoksa"     { token_yaz("KEYWORD", kelime); devam; }
+            eger kelime == "devam"     { token_yaz("KEYWORD", kelime); devam; }
+            eger kelime == "kir"       { token_yaz("KEYWORD", kelime); devam; }
+            eger kelime == "tuz"       { token_yaz("BOOL", kelime); devam; }
+            eger kelime == "ters"      { token_yaz("BOOL", kelime); devam; }
+            token_yaz("ID", kelime);
+            devam;
+        }
+
+        // String
+        eger k == "\"" {
+            i = i + 1;
+            degisken metin = "";
+            iken i < boy ve kaynak[i] != "\"" {
+                metin = metin + kaynak[i];
+                i = i + 1;
+            }
+            i = i + 1;
+            token_yaz("STRING", metin);
+            devam;
+        }
+
+        // Cift karakterli operatorler
+        eger k == "=" {
+            eger i + 1 < boy ve kaynak[i + 1] == "=" {
+                token_yaz("OP", "==");
+                i = i + 2;
+                devam;
+            }
+            token_yaz("OP", "=");
+            i = i + 1;
+            devam;
+        }
+
+        eger k == "!" {
+            eger i + 1 < boy ve kaynak[i + 1] == "=" {
+                token_yaz("OP", "!=");
+                i = i + 2;
+                devam;
+            }
+            token_yaz("OP", "!");
+            i = i + 1;
+            devam;
+        }
+
+        eger k == "<" {
+            eger i + 1 < boy ve kaynak[i + 1] == "=" {
+                token_yaz("OP", "<=");
+                i = i + 2;
+                devam;
+            }
+            token_yaz("OP", "<");
+            i = i + 1;
+            devam;
+        }
+
+        eger k == ">" {
+            eger i + 1 < boy ve kaynak[i + 1] == "=" {
+                token_yaz("OP", ">=");
+                i = i + 2;
+                devam;
+            }
+            token_yaz("OP", ">");
+            i = i + 1;
+            devam;
+        }
+
+        // Tek karakterli operatorler ve noktalama
+        eger k == "+" { token_yaz("OP", "+"); i = i + 1; devam; }
+        eger k == "-" { token_yaz("OP", "-"); i = i + 1; devam; }
+        eger k == "*" { token_yaz("OP", "*"); i = i + 1; devam; }
+        eger k == "/" { token_yaz("OP", "/"); i = i + 1; devam; }
+        eger k == "%" { token_yaz("OP", "%"); i = i + 1; devam; }
+        eger k == ";" { token_yaz("NOKTA_VIRGUL", ";"); i = i + 1; devam; }
+        eger k == "(" { token_yaz("L_P", "("); i = i + 1; devam; }
+        eger k == ")" { token_yaz("R_P", ")"); i = i + 1; devam; }
+        eger k == "{" { token_yaz("L_B", "{"); i = i + 1; devam; }
+        eger k == "}" { token_yaz("R_B", "}"); i = i + 1; devam; }
+        eger k == "[" { token_yaz("L_SQ", "["); i = i + 1; devam; }
+        eger k == "]" { token_yaz("R_SQ", "]"); i = i + 1; devam; }
+        eger k == "," { token_yaz("VIRGUL", ","); i = i + 1; devam; }
+
+        // Bilinmeyen karakter
+        yaz "[BILINMEYEN:" + k + "]";
+        i = i + 1;
+    }
+
+    token_yaz("EOF", "");
+}
+
+// --- Test ---
+yaz "=== Zedin Self-hosting Lexer v1 ===";
+yaz "";
+
+degisken kod1 = "yaz 42;";
+yaz "Girdi: " + kod1;
+tara(kod1);
+yaz "";
+
+degisken kod2 = "degisken x = 10;";
+yaz "Girdi: " + kod2;
+tara(kod2);
+yaz "";
+
+degisken kod3 = "eger x == 5 { yaz x; }";
+yaz "Girdi: " + kod3;
+tara(kod3);
+yaz "";
+
+degisken kod4 = "fonk topla(a, b) { don a + b; }";
+yaz "Girdi: " + kod4;
+tara(kod4);

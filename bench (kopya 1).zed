@@ -1,0 +1,7 @@
+degisken i = 0;
+degisken toplam = 0;
+iken i < 100000 {
+    toplam = toplam + i;
+    i = i + 1;
+}
+yaz toplam;

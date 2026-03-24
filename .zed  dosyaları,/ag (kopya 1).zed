@@ -1,0 +1,98 @@
+// ============================================================
+// ag.zed - Zedin Ağ Modülü v1.0
+// Kullanım: aktar "ag";
+// Not: curl sisteminizde kurulu olmalı
+// ============================================================
+
+// HTTP GET isteği
+fonk get(url) {
+    degisken sonuc = http_get(url);
+    eger hata_mi(sonuc) {
+        yaz "[AG HATA] GET başarısız: " + url;
+        don "";
+    }
+    don deger_al(sonuc);
+}
+
+// HTTP POST isteği (JSON)
+fonk post(url, veri) {
+    degisken sonuc = http_post(url, veri);
+    eger hata_mi(sonuc) {
+        yaz "[AG HATA] POST başarısız: " + url;
+        don "";
+    }
+    don deger_al(sonuc);
+}
+
+// JSON API çağrısı - GET ve parse
+fonk api_get(url) {
+    aktar "json.zed";
+    degisken cevap = get(url);
+    eger uzunluk(cevap) == 0 { don []; }
+    don json_parse(cevap);
+}
+
+// JSON API çağrısı - POST ve parse
+fonk api_post(url, veri_listesi) {
+    aktar "json.zed";
+    degisken json_veri = json_uret(veri_listesi);
+    degisken cevap = post(url, json_veri);
+    eger uzunluk(cevap) == 0 { don []; }
+    don json_parse(cevap);
+}
+
+// URL'den dosya indir
+fonk indir(url, hedef_dosya) {
+    degisken komut = "curl -s --max-time 30 -o " + hedef_dosya + " \"" + url + "\"";
+    degisken sonuc = komut_calistir(komut);
+    don tamam_mi(sonuc);
+}
+
+// Ping at (host ulaşılabilir mi)
+fonk ping(host) {
+    degisken sonuc = komut_calistir("ping -c 1 -W 2 " + host + " 2>&1");
+    eger hata_mi(sonuc) { don ters; }
+    degisken cikti = deger_al(sonuc);
+    don iceriyor_mu_metin(cikti, "1 received");
+}
+
+// IP adresini bul
+fonk ip_bul(host) {
+    degisken sonuc = komut_calistir("host " + host + " 2>&1 | head -1");
+    eger tamam_mi(sonuc) { don deger_al(sonuc); }
+    don "";
+}
+
+// Public IP'yi öğren
+fonk public_ip() {
+    don get("https://api.ipify.org");
+}
+
+// Basit URL parse - protocol, host, path ayır
+fonk url_parse(url) {
+    degisken protokol = "";
+    degisken host = "";
+    degisken yol = "/";
+
+    // Protokol bul
+    degisken pp = bul(url, "://");
+    eger pp >= 0 {
+        degisken i = 0;
+        iken i < pp {
+            protokol = protokol + url[i];
+            i = i + 1;
+        }
+        degisken geri = pp + 3;
+        // Host bul
+        degisken slash = bul(alt_metin(url, geri, uzunluk(url)), "/");
+        eger slash >= 0 {
+            host = alt_metin(url, geri, geri + slash);
+            yol = alt_metin(url, geri + slash, uzunluk(url));
+        } yoksa {
+            host = alt_metin(url, geri, uzunluk(url));
+        }
+    }
+
+    don [["protokol", protokol], ["host", host], ["yol", yol]];
+}
+

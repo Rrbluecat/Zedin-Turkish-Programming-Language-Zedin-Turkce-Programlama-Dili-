@@ -1,0 +1,40 @@
+// ============================================================
+// ODY - Oku Değerlendir Yaz
+// Zedin Self-hosting REPL v1.0
+// Kullanım: zedin ody.zed
+// ============================================================
+
+aktar "interpreter.zed";
+
+yaz "╔════════════════════════════════╗";
+yaz "║     Zedin ODY v1.0             ║";
+yaz "║     Oku-Değerlendir-Yaz        ║";
+yaz "║     Çıkmak için: cikis yaz     ║";
+yaz "╚════════════════════════════════╝";
+yaz "";
+
+degisken _calisıyor = tuz;
+
+iken _calisıyor {
+    degisken satir = oku(">>> ");
+
+    eger satir == "" {
+        devam;
+    }
+
+    eger satir == "cikis" {
+        yaz "Görüşürüz!";
+        _calisıyor = ters;
+        devam;
+    }
+
+    eger satir == "yardim" {
+        yaz "Zedin ODY Komutları:";
+        yaz "  yardim  - Bu yardım mesajı";
+        yaz "  cikis   - ODY'den çık";
+        devam;
+    }
+
+    calistir_kod(satir);
+}
+
