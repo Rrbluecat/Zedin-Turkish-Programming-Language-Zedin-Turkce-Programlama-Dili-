@@ -24,6 +24,10 @@ yaz fakt(10);
 
 ---
 
+Dosya kısayolu:.zed
+Logosu:
+![Zedin Logo](zedin_logo.png)
+
 ## Özellikler
 
 | Özellik | Açıklama |
