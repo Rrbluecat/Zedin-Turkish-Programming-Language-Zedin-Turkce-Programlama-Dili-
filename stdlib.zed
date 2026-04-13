@@ -1,20 +1,390 @@
-// Zedin Standart Kütüphanesi
+// ============================================================
+// stdlib.zed - Zedin Standart Kutuphanesi
+// Tamamen Zedin ile yazilmis!
+// Otomatik yuklenir: zedin herhangi_dosya.zed
+// ============================================================
 
-fonk mutlak(x) {
-    eger x < 0 { don x * -1; }
-    don x;
+// ============================================================
+// STRING FONKSIYONLARI
+// ============================================================
+
+// Stringin icinde karakter/kelime arama
+// icerir("merhaba", "er") -> tuz
+fonk icerir(metin, aranan) {
+    degisken m_boy = uzunluk(metin);
+    degisken a_boy = uzunluk(aranan);
+    eger a_boy == 0 { don tuz; }
+    eger a_boy > m_boy { don ters; }
+    degisken i = 0;
+    iken i < m_boy - a_boy + 1 {
+        degisken j = 0;
+        degisken eslesti = tuz;
+        iken j < a_boy {
+            eger metin[i + j] != aranan[j] { eslesti = ters; }
+            j = j + 1;
+        }
+        eger eslesti { don tuz; }
+        i = i + 1;
+    }
+    don ters;
 }
 
+// String baslangicini kontrol et
+// ile_baslar("merhaba", "mer") -> tuz
+fonk ile_baslar(metin, on_ek) {
+    degisken m_boy = uzunluk(metin);
+    degisken o_boy = uzunluk(on_ek);
+    eger o_boy > m_boy { don ters; }
+    degisken i = 0;
+    iken i < o_boy {
+        eger metin[i] != on_ek[i] { don ters; }
+        i = i + 1;
+    }
+    don tuz;
+}
+
+// String sonunu kontrol et
+// ile_biter("merhaba", "aba") -> tuz
+fonk ile_biter(metin, son_ek) {
+    degisken m_boy = uzunluk(metin);
+    degisken s_boy = uzunluk(son_ek);
+    eger s_boy > m_boy { don ters; }
+    degisken fark = m_boy - s_boy;
+    degisken i = 0;
+    iken i < s_boy {
+        eger metin[fark + i] != son_ek[i] { don ters; }
+        i = i + 1;
+    }
+    don tuz;
+}
+
+// String parcalama
+// parcala("a,b,c", ",") -> ["a", "b", "c"]
+fonk parcala(metin, ayirici) {
+    degisken sonuc = [];
+    degisken parca = "";
+    degisken m_boy = uzunluk(metin);
+    degisken a_boy = uzunluk(ayirici);
+    degisken i = 0;
+    iken i < m_boy {
+        eger a_boy == 1 ve metin[i] == ayirici {
+            sonuc = liste_ekle(sonuc, parca);
+            parca = "";
+            i = i + 1;
+            devam;
+        }
+        eger a_boy > 1 ve i + a_boy <= m_boy {
+            degisken eslesti = tuz;
+            degisken j = 0;
+            iken j < a_boy {
+                eger metin[i + j] != ayirici[j] { eslesti = ters; }
+                j = j + 1;
+            }
+            eger eslesti {
+                sonuc = liste_ekle(sonuc, parca);
+                parca = "";
+                i = i + a_boy;
+                devam;
+            }
+        }
+        parca = parca + metin[i];
+        i = i + 1;
+    }
+    sonuc = liste_ekle(sonuc, parca);
+    don sonuc;
+}
+
+// String birlestirme (join)
+// birlestir(["a", "b", "c"], ",") -> "a,b,c"
+fonk birlestir(liste, ayirici) {
+    degisken sonuc = "";
+    degisken i = 0;
+    iken i < uzunluk(liste) {
+        eger i > 0 { sonuc = sonuc + ayirici; }
+        sonuc = sonuc + metine(liste[i]);
+        i = i + 1;
+    }
+    don sonuc;
+}
+
+// Bos karakter temizleme (trim)
+// kirp("  merhaba  ") -> "merhaba"
+fonk kirp(metin) {
+    degisken boy = uzunluk(metin);
+    degisken bas = 0;
+    degisken son = boy - 1;
+    iken bas < boy ve (metin[bas] == " " veya metin[bas] == "\t" veya metin[bas] == "\n") {
+        bas = bas + 1;
+    }
+    iken son > bas ve (metin[son] == " " veya metin[son] == "\t" veya metin[son] == "\n") {
+        son = son - 1;
+    }
+    degisken sonuc = "";
+    degisken i = bas;
+    iken i < son + 1 {
+        sonuc = sonuc + metin[i];
+        i = i + 1;
+    }
+    don sonuc;
+}
+
+// Alt string alma
+// alt_string("merhaba", 2, 5) -> "rhab"
+fonk alt_string(metin, baslangic, bitis) {
+    degisken sonuc = "";
+    degisken i = baslangic;
+    iken i < bitis ve i < uzunluk(metin) {
+        sonuc = sonuc + metin[i];
+        i = i + 1;
+    }
+    don sonuc;
+}
+
+// String'de karakter ara, indis dondur
+// bul("merhaba", "ha") -> 3, bulamazsa -1
+fonk bul(metin, aranan) {
+    degisken m_boy = uzunluk(metin);
+    degisken a_boy = uzunluk(aranan);
+    eger a_boy == 0 { don 0; }
+    degisken i = 0;
+    iken i < m_boy - a_boy + 1 {
+        degisken j = 0;
+        degisken eslesti = tuz;
+        iken j < a_boy {
+            eger metin[i + j] != aranan[j] { eslesti = ters; }
+            j = j + 1;
+        }
+        eger eslesti { don i; }
+        i = i + 1;
+    }
+    don 0 - 1;
+}
+
+// String tekrarlama
+// tekrarla("ab", 3) -> "ababab"
+fonk tekrarla(metin, sayi) {
+    degisken sonuc = "";
+    degisken i = 0;
+    iken i < sayi {
+        sonuc = sonuc + metin;
+        i = i + 1;
+    }
+    don sonuc;
+}
+
+// String tersine cevir
+// ters_cevir("abc") -> "cba"
+fonk ters_cevir(metin) {
+    degisken sonuc = "";
+    degisken i = uzunluk(metin) - 1;
+    iken i > -1 {
+        sonuc = sonuc + metin[i];
+        i = i - 1;
+    }
+    don sonuc;
+}
+
+// ============================================================
+// LISTE FONKSIYONLARI
+// ============================================================
+
+// Listede eleman ara
+// listede_bul([1,2,3], 2) -> 1, bulamazsa -1
+fonk listede_bul(liste, aranan) {
+    degisken i = 0;
+    iken i < uzunluk(liste) {
+        eger liste[i] == aranan { don i; }
+        i = i + 1;
+    }
+    don 0 - 1;
+}
+
+// Listede eleman var mi
+fonk listede_varmi(liste, aranan) {
+    don listede_bul(liste, aranan) > -1;
+}
+
+// Liste kopyala
+fonk liste_kopyala(liste) {
+    degisken yeni = [];
+    degisken i = 0;
+    iken i < uzunluk(liste) {
+        yeni = liste_ekle(yeni, liste[i]);
+        i = i + 1;
+    }
+    don yeni;
+}
+
+// Listeyi tersine cevir
+fonk liste_ters(liste) {
+    global_ata("_tmp_ters", []);
+    degisken i = uzunluk(liste) - 1;
+    iken i > -1 {
+        global_ekle("_tmp_ters", liste[i]);
+        i = i - 1;
+    }
+    don global_getir("_tmp_ters");
+}
+
+// Iki listeyi birlestir
+fonk liste_birlestir(a, b) {
+    degisken yeni = liste_kopyala(a);
+    degisken i = 0;
+    iken i < uzunluk(b) {
+        yeni = liste_ekle(yeni, b[i]);
+        i = i + 1;
+    }
+    don yeni;
+}
+
+// Liste dilimleme
+// dilim([1,2,3,4,5], 1, 3) -> [2,3]
+fonk dilim(liste, baslangic, bitis) {
+    degisken yeni = [];
+    degisken i = baslangic;
+    iken i < bitis ve i < uzunluk(liste) {
+        yeni = liste_ekle(yeni, liste[i]);
+        i = i + 1;
+    }
+    don yeni;
+}
+
+// Listeyi sirala (kucukten buyuge, sayilar icin)
+fonk sirala(liste) {
+    degisken yeni = liste_kopyala(liste);
+    degisken n = uzunluk(yeni);
+    degisken i = 0;
+    iken i < n {
+        degisken j = 0;
+        iken j < n - i - 1 {
+            eger yeni[j] > yeni[j + 1] {
+                degisken temp = yeni[j];
+                yeni[j] = yeni[j + 1];
+                yeni[j + 1] = temp;
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    don yeni;
+}
+
+// Liste toplami
+fonk toplam(liste) {
+    degisken t = 0;
+    degisken i = 0;
+    iken i < uzunluk(liste) {
+        t = t + liste[i];
+        i = i + 1;
+    }
+    don t;
+}
+
+// Liste ortalamasi
+fonk ortalama(liste) {
+    eger uzunluk(liste) == 0 { don 0; }
+    don toplam(liste) / uzunluk(liste);
+}
+
+// Listede maksimum
+fonk maksimum(liste) {
+    eger uzunluk(liste) == 0 { don 0; }
+    degisken maks = liste[0];
+    degisken i = 1;
+    iken i < uzunluk(liste) {
+        eger liste[i] > maks { maks = liste[i]; }
+        i = i + 1;
+    }
+    don maks;
+}
+
+// Listede minimum
+fonk minimum(liste) {
+    eger uzunluk(liste) == 0 { don 0; }
+    degisken min = liste[0];
+    degisken i = 1;
+    iken i < uzunluk(liste) {
+        eger liste[i] < min { min = liste[i]; }
+        i = i + 1;
+    }
+    don min;
+}
+
+// ============================================================
+// MATEMATIK FONKSIYONLARI
+// ============================================================
+
+// Maksimum iki sayi
 fonk maks(a, b) {
     eger a > b { don a; }
     don b;
 }
 
+// Minimum iki sayi
 fonk min(a, b) {
     eger a < b { don a; }
     don b;
 }
 
-fonk kare(x) {
-    don x * x;
+// Sayi araliginda mi
+// aralikta(5, 1, 10) -> tuz
+fonk aralikta(sayi, alt, ust) {
+    don sayi >= alt ve sayi <= ust;
+}
+
+// ============================================================
+// TIP KONTROL FONKSIYONLARI
+// ============================================================
+
+// Sayi mi kontrolu (string icin)
+fonk sayi_mi(metin) {
+    degisken boy = uzunluk(metin);
+    eger boy == 0 { don ters; }
+    degisken i = 0;
+    eger metin[0] == "-" { i = 1; }
+    degisken nokta_sayisi = 0;
+    iken i < boy {
+        eger metin[i] == "." {
+            nokta_sayisi = nokta_sayisi + 1;
+            eger nokta_sayisi > 1 { don ters; }
+            i = i + 1;
+            devam;
+        }
+        eger metin[i] == "0" veya metin[i] == "1" veya metin[i] == "2" veya
+             metin[i] == "3" veya metin[i] == "4" veya metin[i] == "5" veya
+             metin[i] == "6" veya metin[i] == "7" veya metin[i] == "8" veya
+             metin[i] == "9" {
+            i = i + 1;
+            devam;
+        }
+        don ters;
+    }
+    don tuz;
+}
+
+// Bos mu kontrolu
+fonk bos_mu(deger) {
+    don deger == bos veya deger == "" veya deger == 0;
+}
+
+// ============================================================
+// CIKTI YARDIMCILARI
+// ============================================================
+
+// Satirla yazdir
+fonk yazsat(metin) {
+    yaz metin;
+}
+
+// Hata yazdir
+fonk hata_yaz(metin) {
+    yaz "[HATA] " + metine(metin);
+}
+
+// Baslik yazdir
+fonk baslik_yaz(metin) {
+    degisken cizgi = tekrarla("=", uzunluk(metin) + 4);
+    yaz cizgi;
+    yaz "= " + metin + " =";
+    yaz cizgi;
 }

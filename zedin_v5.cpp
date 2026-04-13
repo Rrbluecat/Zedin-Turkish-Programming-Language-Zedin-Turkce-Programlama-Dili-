@@ -485,6 +485,10 @@ struct ContinueSignal {};
 // ============================================================
 // 9. INTERPRETER
 // ============================================================
+class Interpreter;  // forward declaration
+Interpreter* _global_interp = nullptr;
+void run(const std::string& source, const std::string& fileName, Interpreter& interp);
+
 class Interpreter {
     shared_ptr<Environment> globals;
     shared_ptr<Environment> env;
@@ -645,6 +649,68 @@ private:
         }));
 
         // cikis(kod) → programı sonlandır
+        // Global degisken deposu - self-hosting interpreter icin
+        static map<string, Val> _global_depo;
+
+        globals->define("arg_listesi_al", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.empty()) return Val(make_shared<ZedinList>());
+            int argc = (int)args[0].num;
+            auto liste = make_shared<ZedinList>();
+            for (int i = 0; i < argc; i++) {
+                string key = "_arg_" + to_string(i);
+                auto it = _global_depo.find(key);
+                if (it != _global_depo.end()) {
+                    liste->elements.push_back(it->second);
+                }
+            }
+            return Val(liste);
+        }));
+
+         globals->define("calistir_kod", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.size() > 0 && args[0].type == V_STR && _global_interp) {
+                run(args[0].str, "<calistir_kod>", *_global_interp);
+            }
+            return Val();
+        }));
+       
+        globals->define("global_ekle", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.size() < 2) return Val();
+            string key = args[0].str;
+            auto it = _global_depo.find(key);
+            if (it != _global_depo.end() && it->second.type == V_LIST) {
+                it->second.list->elements.push_back(args[1]);
+            }
+            return Val();
+        }));
+
+        globals->define("liste_ekle", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.size() < 2) return Val();
+            auto yeni = make_shared<ZedinList>();
+            if (args[0].type == V_LIST) yeni->elements = args[0].list->elements;
+            yeni->elements.push_back(args[1]);
+            return Val(yeni);
+        }));
+
+        globals->define("global_ata", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.size() >= 2) _global_depo[args[0].str] = args[1];
+            return Val();
+        }));
+
+        globals->define("global_getir", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.size() >= 1) {
+                auto it = _global_depo.find(args[0].str);
+                if (it != _global_depo.end()) return it->second;
+            }
+            return Val();
+        }));
+
+        globals->define("global_varmi", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.size() >= 1) {
+                return Val(_global_depo.count(args[0].str) > 0);
+            }
+            return Val(false);
+        }));
+
         globals->define("cikis", Val::makeNative([](vector<Val> args) -> Val {
             int kod = args.empty() ? 0 : (int)args[0].num;
             exit(kod);
@@ -1742,6 +1808,7 @@ void runVM(const string& source, const string& fileName, BVM& vm) {
 // ============================================================
 int main(int argc, char* argv[]) {
     Interpreter interp;
+    _global_interp = &interp;
 
     // stdlib.zed otomatik yükleme
     {
