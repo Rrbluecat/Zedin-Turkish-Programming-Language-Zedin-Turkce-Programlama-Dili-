@@ -1,1 +1,4 @@
 *.zed linguist-language=Zedin
+*.zed linguist-detectable=true
+zedin_v5.cpp linguist-vendored=true
+Bytecode.h linguist-vendored=true
