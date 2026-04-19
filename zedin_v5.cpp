@@ -1820,6 +1820,16 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // interpreter.zed otomatik yukleme (self-hosting)
+    {
+        ifstream interp_file("interpreter.zed");
+        if (interp_file.is_open()) {
+            stringstream buf;
+            buf << interp_file.rdbuf();
+            run(buf.str(), "interpreter.zed", interp);
+        }
+    }
+
     // VM modu: zedin --vm dosya.zed
     if (argc >= 3 && string(argv[1]) == "--vm") {
         BVM vm;
