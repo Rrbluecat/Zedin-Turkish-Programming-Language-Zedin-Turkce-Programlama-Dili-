@@ -486,6 +486,7 @@ struct ContinueSignal {};
 // 9. INTERPRETER
 // ============================================================
 class Interpreter;  // forward declaration
+string zedin_arm_uret(shared_ptr<BChunk> chunk);  // ARM backend
 Interpreter* _global_interp = nullptr;
 void run(const std::string& source, const std::string& fileName, Interpreter& interp);
 
@@ -1820,8 +1821,13 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // interpreter.zed otomatik yukleme (self-hosting)
-    {
+    // ARM ve derle modlarinda interpreter.zed yukleme
+    bool interpreter_yukle = true;
+    if (argc >= 2) {
+        string mod = argv[1];
+        if (mod == "--arm" || mod == "--derle") interpreter_yukle = false;
+    }
+    if (interpreter_yukle) {
         ifstream interp_file("interpreter.zed");
         if (interp_file.is_open()) {
             stringstream buf;
@@ -1840,6 +1846,29 @@ int main(int argc, char* argv[]) {
         }
         stringstream buf; buf << file.rdbuf();
         runVM(buf.str(), argv[2], vm);
+        return 0;
+    }
+
+    // ARM backend: zedin --arm dosya.zed → dosya.s
+    if (argc >= 3 && string(argv[1]) == "--arm") {
+        string kaynak = argv[2];
+        ifstream file(kaynak);
+        if (!file.is_open()) { cerr << RED << "Dosya acilamadi: " << kaynak << RESET << endl; return 1; }
+        stringstream buf; buf << file.rdbuf();
+        try {
+            Lexer lexer(buf.str(), kaynak);
+            auto tokens = lexer.scan();
+            Parser parser(move(tokens));
+            auto stmts = parser.parse();
+            BCompiler compiler("<ana>", true);
+            compiler.derleProgram(stmts);
+            auto chunk = compiler.getChunk();
+            string asm_cikti = zedin_arm_uret(chunk);
+            string cikti_dosya = kaynak.substr(0, kaynak.rfind('.')) + ".s";
+            ofstream out(cikti_dosya);
+            out << asm_cikti;
+            cout << GREEN << "ARM assembly uretildi: " << cikti_dosya << RESET << endl;
+        } catch (ZedinError& e) { cerr << RED << "[Hata] " << e.what() << RESET << endl; return 1; }
         return 0;
     }
 
@@ -1957,3 +1986,4 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
+#include "arm_backend.cpp"
