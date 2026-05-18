@@ -2,4 +2,8 @@ zedin             # Derlenmiş ana binary
 *.zedc            # Bytecode çıktıları
 program.c         # Transpiler'dan çıkan geçici C dosyaları
 a.out             # GCC çıktıları
+*.bin
+*.img
+*.o
+__pycache__/
 
