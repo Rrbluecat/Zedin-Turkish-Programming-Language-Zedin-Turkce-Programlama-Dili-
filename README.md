@@ -125,8 +125,8 @@ Zedin artık **tamamen kendi kendini çalıştırabiliyor.** Lexer, Parser ve In
 Lexer       → lexer.zed        ✅ %100
 Parser      → parser.zed       ✅ %100
 Interpreter → interpreter.zed  ✅ %100
-Stdlib      → stdlib.zed       ✅
-ODY (REPL)  → ody.zed          ✅
+Stdlib      → stdlib.zed       ✅ %100
+ODY (REPL)  → ody.zed          ✅ %100
 ```
 
 ```bash
