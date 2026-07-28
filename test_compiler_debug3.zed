@@ -1,0 +1,13 @@
+aktar "interpreter.zed";
+aktar "compiler.zed";
+
+degisken fn_ch = chunk_yeni("selam");
+chunk_degisken_ekle(fn_ch, "isim");
+yaz "Eklemeden once: " + metine(uzunluk(chunk_degiskenler(fn_ch)));
+
+degisken ana_ch = chunk_yeni("<ana>");
+degisken fidx = chunk_sabit_ekle(ana_ch, fn_ch);
+yaz "Sabit olarak eklendi, index: " + metine(fidx);
+
+degisken sabit_fn = chunk_sabitler(ana_ch)[0];
+yaz "Sabitteki degisken sayisi: " + metine(uzunluk(sabit_fn[2]));

@@ -1,0 +1,4 @@
+fonk selam(isim) {
+    don "Merhaba " + isim;
+}
+yaz selam("Zedin");

@@ -1,0 +1,5 @@
+aktar "interpreter.zed";
+aktar "compiler.zed";
+degisken ch = chunk_yeni("test");
+chunk_yaz_op_arg(ch, 1, 1);
+yaz metine(ch[0][0]) + " " + metine(ch[0][1]) + " " + metine(ch[0][2]);

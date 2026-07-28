@@ -291,6 +291,12 @@ struct BChunk {
                 default: cout << "BILINMEYEN(" << (int)code[i-1] << ")" << endl;
             }
         }
+        // Sub-chunk'lari da goster
+        for (auto& s : sabitler) {
+            if (s.type == BVal::FUNC && s.func) {
+                s.func->disassemble();
+            }
+        }
     }
 
     // ---- BYTECODE KAYDET / YUKLE (.zedc) ----

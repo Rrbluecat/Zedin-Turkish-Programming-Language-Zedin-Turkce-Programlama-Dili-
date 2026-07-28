@@ -1,0 +1,12 @@
+aktar "interpreter.zed";
+aktar "compiler.zed";
+
+degisken kod = "fonk selam(isim) { don isim; } yaz selam(\"Zedin\");";
+degisken tokenlar = tara(kod);
+degisken ast = parse(tokenlar);
+degisken ch = chunk_yeni("<ana>");
+degisken _global_mod = tuz;
+derle_stmt(ch, ast[0]);
+yaz "Degiskenler: " + metine(ch[2]);
+yaz "Sabit sayisi: " + metine(uzunluk(ch[1]));
+yaz "Bul selam: " + metine(chunk_degisken_bul(ch, "selam"));

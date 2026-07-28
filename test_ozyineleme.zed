@@ -1,0 +1,6 @@
+fonk fakt(n) {
+    eger n <= 1 { don 1; }
+    don n * fakt(n - 1);
+}
+yaz fakt(5);
+yaz fakt(10);

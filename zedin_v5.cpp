@@ -246,8 +246,8 @@ private:
             case '.': addToken(T_DOT,   "."); break;
             case '=': { bool m = match('='); addToken(m ? T_EQEQ : T_EQ, m ? "==" : "="); break; }
             case '!': { bool m = match('='); addToken(m ? T_BANGEQ : T_BANG, m ? "!=" : "!"); break; }
-            case '>': addToken(match('=') ? T_GTE    : T_GT,    match('=') ? ">=" : ">"); break;
-            case '<': addToken(match('=') ? T_LTE    : T_LT,    match('=') ? "<=" : "<"); break;
+            case '>': { bool m = match('='); addToken(m ? T_GTE : T_GT, m ? ">=" : ">"); break; }
+            case '<': { bool m = match('='); addToken(m ? T_LTE : T_LT, m ? "<=" : "<"); break; }
             case '"': scanString(); break;
             default:
                 if (isdigit((unsigned char)c)) { scanNumber(c); break; }
@@ -919,11 +919,65 @@ private:
                 throw ZedinError({}, "ac_ya_hata patladı: " + args[0].result_val->toString());
             return *args[0].result_val;
         }));
+
+        // ── BIT VE BINARY DOSYA BUILT-IN'LER (Compiler icin) ──
+
+        // bit_kaydir_sag(sayi, n) → sayi >> n
+        globals->define("bit_kaydir_sag", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.size() < 2) return Val(0.0);
+            long a = (long)args[0].num, n = (long)args[1].num;
+            return Val((double)(a >> n));
+        }));
+
+        // bit_kaydir_sol(sayi, n) → sayi << n
+        globals->define("bit_kaydir_sol", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.size() < 2) return Val(0.0);
+            long a = (long)args[0].num, n = (long)args[1].num;
+            return Val((double)(a << n));
+        }));
+
+        // bit_ve(a, b) → a & b
+        globals->define("bit_ve", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.size() < 2) return Val(0.0);
+            long a = (long)args[0].num, b = (long)args[1].num;
+            return Val((double)(a & b));
+        }));
+
+        // bit_veya(a, b) → a | b
+        globals->define("bit_veya", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.size() < 2) return Val(0.0);
+            long a = (long)args[0].num, b = (long)args[1].num;
+            return Val((double)(a | b));
+        }));
+
+        // byte_yaz(yol, sayi) → 0-255 arasi bir byte dosyaya ekler
+        globals->define("byte_yaz", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.size() < 2) return Val::makeResult(false, Val(string("yol ve byte gerekli")));
+            ofstream f(args[0].str, ios::binary | ios::app);
+            if (!f.is_open()) return Val::makeResult(false, Val(string("dosya acilamadi")));
+            uint8_t b = (uint8_t)((long)args[1].num & 0xFF);
+            f.write((char*)&b, 1);
+            return Val::makeResult(true, Val(string("ok")));
+        }));
+
+        // byte_dosya_temizle(yol) → dosyayi sifirla
+        globals->define("byte_dosya_temizle", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.empty()) return Val::makeResult(false, Val(string("yol gerekli")));
+            ofstream f(args[0].str, ios::binary | ios::trunc);
+            if (!f.is_open()) return Val::makeResult(false, Val(string("dosya acilamadi")));
+            return Val::makeResult(true, Val(string("ok")));
+        }));
+
+        // char_kodu(karakter) → ASCII degerini dondurur
+        globals->define("char_kodu", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.empty() || args[0].type != V_STR || args[0].str.empty())
+                return Val(0.0);
+            return Val((double)(unsigned char)args[0].str[0]);
+        }));
     }
 
     // --- Statement yürütücü ---
     void execute(Stmt* s) {
-        if (!s) return;
 
         if (auto st = dynamic_cast<ExprStmt*>(s)) {
             evaluate(st->expr.get());
@@ -1903,6 +1957,18 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
+
+    // Disassembler modu: zedin --dis dosya.zedc
+    if (argc >= 3 && string(argv[1]) == "--dis") {
+        try {
+            auto chunk = BChunk::yukleDosya(argv[2]);
+            chunk->disassemble();
+        } catch (exception& e) {
+            cerr << RED << "[Hata] " << e.what() << RESET << endl;
+            return 1;
+        }
+        return 0;
+    }
     // Bytecode çalıştırma: zedin dosya.zedc
     if (argc >= 2 && string(argv[1]).size() > 5 &&
         string(argv[1]).substr(string(argv[1]).size()-5) == ".zedc") {

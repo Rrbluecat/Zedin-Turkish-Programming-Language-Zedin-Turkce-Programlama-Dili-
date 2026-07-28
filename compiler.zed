@@ -1,0 +1,451 @@
+// ============================================================
+// compiler.zed - Zedin ile yazilmis Zedin Bytecode Compiler
+// Self-hosting v1: AST → .zedc binary format
+// ============================================================
+
+// ── OPCODE SABİTLERİ ──
+degisken OP_SAYI        = 0;
+degisken OP_METIN       = 1;
+degisken OP_TUZ         = 2;
+degisken OP_TERS        = 3;
+degisken OP_BOS         = 4;
+degisken OP_YUKLE       = 5;
+degisken OP_SAKLA       = 6;
+degisken OP_TANI        = 7;
+degisken OP_TOPLA       = 8;
+degisken OP_CIKAR       = 9;
+degisken OP_CARP        = 10;
+degisken OP_BOL         = 11;
+degisken OP_MOD         = 12;
+degisken OP_NEG         = 13;
+degisken OP_ESIT        = 14;
+degisken OP_ESIT_DEGIL  = 15;
+degisken OP_BUYUK       = 16;
+degisken OP_KUCUK       = 17;
+degisken OP_BUYUK_ESIT  = 18;
+degisken OP_KUCUK_ESIT  = 19;
+degisken OP_VE          = 20;
+degisken OP_VEYA        = 21;
+degisken OP_DEGIL       = 22;
+degisken OP_LISTE       = 23;
+degisken OP_INDEKS_AL   = 24;
+degisken OP_INDEKS_ATA  = 25;
+degisken OP_ATLA        = 26;
+degisken OP_ATLA_YANLIS = 27;
+degisken OP_ATLA_DOGRU  = 28;
+degisken OP_CAGIR       = 29;
+degisken OP_DON         = 30;
+degisken OP_DON_BOS     = 31;
+degisken OP_KIR         = 32;
+degisken OP_DEVAM       = 33;
+degisken OP_YUKLE_GLOBAL = 34;
+degisken OP_SAKLA_GLOBAL = 35;
+degisken OP_TANI_GLOBAL  = 36;
+degisken OP_YAZ         = 37;
+degisken OP_POP         = 38;
+degisken OP_KOPYALA     = 39;
+degisken OP_HALT        = 40;
+
+// ── CHUNK YAPISI ──
+// Her chunk bir liste: [kod, sabitler, degiskenler, params, isim]
+// kod: byte listesi (sayilar)
+// sabitler: deger listesi
+// degiskenler: isim listesi
+// params: parametre isim listesi
+// isim: string
+
+fonk chunk_yeni(isim) {
+    don [[], [], [], [], isim];
+}
+
+fonk chunk_kod(ch)       { don ch[0]; }
+fonk chunk_sabitler(ch)  { don ch[1]; }
+fonk chunk_degiskenler(ch) { don ch[2]; }
+fonk chunk_params(ch)    { don ch[3]; }
+fonk chunk_isim(ch)      { don ch[4]; }
+
+fonk chunk_yaz_byte(ch, b) {
+    ekle(ch[0], b);
+}
+
+fonk chunk_yaz_op(ch, op) {
+    ekle(ch[0], op);
+}
+
+fonk chunk_yaz_op_arg(ch, op, arg) {
+    ekle(ch[0], op);
+    ekle(ch[0], bit_ve(arg, 255));
+    ekle(ch[0], bit_ve(bit_kaydir_sag(arg, 8), 255));
+}
+
+fonk chunk_sabit_ekle(ch, deger) {
+    ekle(ch[1], deger);
+    don uzunluk(ch[1]) - 1;
+}
+
+fonk chunk_degisken_ekle(ch, isim) {
+    degisken i = 0;
+    iken i < uzunluk(ch[2]) {
+        eger ch[2][i] == isim { don i; }
+        i = i + 1;
+    }
+    ekle(ch[2], isim);
+    don uzunluk(ch[2]) - 1;
+}
+
+fonk chunk_degisken_bul(ch, isim) {
+    degisken i = 0;
+    iken i < uzunluk(ch[2]) {
+        eger ch[2][i] == isim { don i; }
+        i = i + 1;
+    }
+    don -1;
+}
+
+// Jump placeholder: 3 byte yaz, konumu dondur
+fonk chunk_jump_placeholder(ch, op) {
+    ekle(ch[0], op);
+    ekle(ch[0], 255);
+    ekle(ch[0], 255);
+    don uzunluk(ch[0]) - 2;
+}
+
+// Jump'i doldur
+fonk chunk_jump_doldur(ch, placeholder, hedef) {
+    degisken offset = hedef - (placeholder + 2);
+    ch[0][placeholder] = bit_ve(offset, 255);
+    ch[0][placeholder + 1] = bit_ve(bit_kaydir_sag(offset, 8), 255);
+}
+
+// ── DERLEYICI DURUMU ──
+degisken _global_mod = tuz;
+
+// Degisken oku/yaz
+fonk derle_var_oku(ch, isim) {
+    degisken idx = chunk_degisken_bul(ch, isim);
+    eger idx >= 0 {
+        chunk_yaz_op_arg(ch, OP_YUKLE, idx);
+    } yoksa {
+        degisken sidx = chunk_sabit_ekle(ch, isim);
+        chunk_yaz_op_arg(ch, OP_YUKLE_GLOBAL, sidx);
+    }
+}
+
+fonk derle_var_yaz(ch, isim) {
+    degisken idx = chunk_degisken_bul(ch, isim);
+    eger idx >= 0 {
+        chunk_yaz_op_arg(ch, OP_SAKLA, idx);
+    } yoksa {
+        degisken sidx = chunk_sabit_ekle(ch, isim);
+        chunk_yaz_op_arg(ch, OP_SAKLA_GLOBAL, sidx);
+    }
+}
+
+// ── İFADE DERLEME ──
+fonk derle_ifade(ch, dugum) {
+    eger dugum == bos { chunk_yaz_op(ch, OP_BOS); don 0; }
+    degisken tip = dugum[0];
+
+    eger tip == "SAYI" {
+        degisken idx = chunk_sabit_ekle(ch, sayiya(dugum[1]));
+        chunk_yaz_op_arg(ch, OP_SAYI, idx);
+        don 0;
+    }
+    eger tip == "STR" {
+        degisken idx = chunk_sabit_ekle(ch, dugum[1]);
+        chunk_yaz_op_arg(ch, OP_METIN, idx);
+        don 0;
+    }
+    eger tip == "BOOL" {
+        eger dugum[1] == "1" { chunk_yaz_op(ch, OP_TUZ); }
+        yoksa { chunk_yaz_op(ch, OP_TERS); }
+        don 0;
+    }
+    eger tip == "ID" {
+        derle_var_oku(ch, dugum[1]);
+        don 0;
+    }
+    eger tip == "ATAMA" {
+        derle_ifade(ch, dugum[2]);
+        derle_var_yaz(ch, dugum[1][1]);
+        don 0;
+    }
+    eger tip == "BINOP" {
+        degisken op = dugum[1];
+        eger op == "ve" {
+            derle_ifade(ch, dugum[2]);
+            degisken jp = chunk_jump_placeholder(ch, OP_ATLA_YANLIS);
+            chunk_yaz_op(ch, OP_POP);
+            derle_ifade(ch, dugum[3]);
+            chunk_jump_doldur(ch, jp, uzunluk(ch[0]));
+            don 0;
+        }
+        eger op == "veya" {
+            derle_ifade(ch, dugum[2]);
+            degisken jp = chunk_jump_placeholder(ch, OP_ATLA_DOGRU);
+            chunk_yaz_op(ch, OP_POP);
+            derle_ifade(ch, dugum[3]);
+            chunk_jump_doldur(ch, jp, uzunluk(ch[0]));
+            don 0;
+        }
+        derle_ifade(ch, dugum[2]);
+        derle_ifade(ch, dugum[3]);
+        eger op == "+"  { chunk_yaz_op(ch, OP_TOPLA); don 0; }
+        eger op == "-"  { chunk_yaz_op(ch, OP_CIKAR); don 0; }
+        eger op == "*"  { chunk_yaz_op(ch, OP_CARP);  don 0; }
+        eger op == "/"  { chunk_yaz_op(ch, OP_BOL);   don 0; }
+        eger op == "%"  { chunk_yaz_op(ch, OP_MOD);   don 0; }
+        eger op == "==" { chunk_yaz_op(ch, OP_ESIT);       don 0; }
+        eger op == "!=" { chunk_yaz_op(ch, OP_ESIT_DEGIL); don 0; }
+        eger op == ">"  { chunk_yaz_op(ch, OP_BUYUK);      don 0; }
+        eger op == "<"  { chunk_yaz_op(ch, OP_KUCUK);      don 0; }
+        eger op == ">=" { chunk_yaz_op(ch, OP_BUYUK_ESIT); don 0; }
+        eger op == "<=" { chunk_yaz_op(ch, OP_KUCUK_ESIT); don 0; }
+        don 0;
+    }
+    eger tip == "CAGRI" {
+        derle_var_oku(ch, dugum[1]);
+        degisken ai = 0;
+        iken ai < uzunluk(dugum[2]) {
+            derle_ifade(ch, dugum[2][ai]);
+            ai = ai + 1;
+        }
+        chunk_yaz_op_arg(ch, OP_CAGIR, uzunluk(dugum[2]));
+        don 0;
+    }
+    don 0;
+}
+
+// ── STATEMENT DERLEME ──
+fonk derle_stmt(ch, stmt) {
+    eger stmt == bos { don 0; }
+    degisken tip = stmt[0];
+
+    eger tip == "DEGISKEN" {
+        eger uzunluk(stmt) > 2 {
+            derle_ifade(ch, stmt[2]);
+        } yoksa {
+            chunk_yaz_op(ch, OP_BOS);
+        }
+        eger _global_mod {
+            degisken sidx = chunk_sabit_ekle(ch, stmt[1]);
+            chunk_yaz_op_arg(ch, OP_TANI_GLOBAL, sidx);
+        } yoksa {
+            degisken idx = chunk_degisken_ekle(ch, stmt[1]);
+            chunk_yaz_op_arg(ch, OP_TANI, idx);
+        }
+        don 0;
+    }
+    eger tip == "YAZ" {
+        derle_ifade(ch, stmt[1]);
+        chunk_yaz_op_arg(ch, OP_YAZ, 1);
+        don 0;
+    }
+    eger tip == "IFADE" {
+        derle_ifade(ch, stmt[1]);
+        chunk_yaz_op(ch, OP_POP);
+        don 0;
+    }
+    eger tip == "EGER" {
+        derle_ifade(ch, stmt[1]);
+        degisken then_jp = chunk_jump_placeholder(ch, OP_ATLA_YANLIS);
+        derle_blok(ch, stmt[2]);
+        eger stmt[3] != "YOK" {
+            degisken else_jp = chunk_jump_placeholder(ch, OP_ATLA);
+            chunk_jump_doldur(ch, then_jp, uzunluk(ch[0]));
+            derle_blok(ch, stmt[3]);
+            chunk_jump_doldur(ch, else_jp, uzunluk(ch[0]));
+        } yoksa {
+            chunk_jump_doldur(ch, then_jp, uzunluk(ch[0]));
+        }
+        don 0;
+    }
+    eger tip == "IKEN" {
+        degisken dongu_bas = uzunluk(ch[0]);
+        derle_ifade(ch, stmt[1]);
+        degisken cikis_jp = chunk_jump_placeholder(ch, OP_ATLA_YANLIS);
+        derle_blok(ch, stmt[2]);
+        degisken geri = dongu_bas - uzunluk(ch[0]) - 3;
+        chunk_yaz_op_arg(ch, OP_ATLA, geri);
+        chunk_jump_doldur(ch, cikis_jp, uzunluk(ch[0]));
+        don 0;
+    }
+    eger tip == "FONK" {
+        degisken fn_ch = chunk_yeni(stmt[1]);
+        degisken onceki_global = _global_mod;
+        _global_mod = ters;
+        degisken pi = 0;
+        iken pi < uzunluk(stmt[2]) {
+            ekle(fn_ch[3], stmt[2][pi]);
+            chunk_degisken_ekle(fn_ch, stmt[2][pi]);
+            pi = pi + 1;
+        }
+        derle_blok(fn_ch, stmt[3]);
+        chunk_yaz_op(fn_ch, OP_DON_BOS);
+        _global_mod = onceki_global;
+        degisken fidx = chunk_sabit_ekle(ch, fn_ch);
+        chunk_yaz_op_arg(ch, OP_SAYI, fidx);
+        degisken gsidx = chunk_sabit_ekle(ch, stmt[1]);
+        chunk_yaz_op_arg(ch, OP_TANI_GLOBAL, gsidx);
+        don 0;
+    }
+    eger tip == "DON" {
+        derle_ifade(ch, stmt[1]);
+        chunk_yaz_op(ch, OP_DON);
+        don 0;
+    }
+    eger tip == "DEVAM" { chunk_yaz_op(ch, OP_DEVAM); don 0; }
+    eger tip == "KIR"   { chunk_yaz_op(ch, OP_KIR);   don 0; }
+    don 0;
+}
+
+fonk derle_blok(ch, blok) {
+    eger blok == "YOK" { don 0; }
+    degisken stmtler = blok[1];
+    degisken i = 0;
+    iken i < uzunluk(stmtler) {
+        derle_stmt(ch, stmtler[i]);
+        i = i + 1;
+    }
+    don 0;
+}
+
+fonk derle_program(stmtler) {
+    degisken ch = chunk_yeni("<ana>");
+    _global_mod = tuz;
+    degisken i = 0;
+    iken i < uzunluk(stmtler) {
+        derle_stmt(ch, stmtler[i]);
+        i = i + 1;
+    }
+    chunk_yaz_op(ch, OP_HALT);
+    don ch;
+}
+
+// ── BINARY YAZICI ──
+fonk yaz_u8(dosya, v) {
+    byte_yaz(dosya, bit_ve(v, 255));
+}
+
+fonk yaz_u16(dosya, v) {
+    byte_yaz(dosya, bit_ve(v, 255));
+    byte_yaz(dosya, bit_ve(bit_kaydir_sag(v, 8), 255));
+}
+
+fonk yaz_u32(dosya, v) {
+    byte_yaz(dosya, bit_ve(v, 255));
+    byte_yaz(dosya, bit_ve(bit_kaydir_sag(v, 8), 255));
+    byte_yaz(dosya, bit_ve(bit_kaydir_sag(v, 16), 255));
+    byte_yaz(dosya, bit_ve(bit_kaydir_sag(v, 24), 255));
+}
+
+fonk yaz_str(dosya, s) {
+    yaz_u16(dosya, uzunluk(s));
+    degisken i = 0;
+    iken i < uzunluk(s) {
+        // Her karakterin ASCII degerini al
+        degisken k = s[i];
+        degisken ascii = char_kodu(k);
+        byte_yaz(dosya, ascii);
+        i = i + 1;
+    }
+}
+
+fonk yaz_f64(dosya, v) {
+    // double'i 8 byte olarak yaz - printf ile hex dump
+    degisken sonuc = komut_calistir("python3 -c \"import struct; d=struct.pack('d'," + metine(v) + "); [print(b,end=' ') for b in d]\"");
+    eger tamam_mi(sonuc) {
+        degisken cikti = deger_al(sonuc);
+        degisken tokenlar = tara(cikti);
+        degisken i = 0;
+        iken i < uzunluk(tokenlar) - 1 {
+            eger tokenlar[i][0] == "SAYI" {
+                byte_yaz(dosya, sayiya(tokenlar[i][1]));
+            }
+            i = i + 1;
+        }
+    }
+}
+
+// Chunk'i dosyaya yaz (recursive - sub-chunk'lar icin)
+fonk chunk_kaydet(dosya, ch) {
+    // isim
+    yaz_str(dosya, chunk_isim(ch));
+    // paramSayisi
+    // param adlari
+    yaz_u8(dosya, uzunluk(chunk_params(ch)));
+    yaz_u8(dosya, uzunluk(chunk_params(ch)));
+    degisken pi = 0;
+    iken pi < uzunluk(chunk_params(ch)) {
+        yaz_str(dosya, chunk_params(ch)[pi]);
+        pi = pi + 1;
+    }
+    // degisken adlari
+    yaz_u16(dosya, uzunluk(chunk_degiskenler(ch)));
+    degisken di = 0;
+    iken di < uzunluk(chunk_degiskenler(ch)) {
+        yaz_str(dosya, chunk_degiskenler(ch)[di]);
+        di = di + 1;
+    }
+    // sabitler
+    yaz_u16(dosya, uzunluk(chunk_sabitler(ch)));
+    degisken si = 0;
+    iken si < uzunluk(chunk_sabitler(ch)) {
+        degisken sabit = chunk_sabitler(ch)[si];
+        degisken sabit_tip = tip(sabit);
+        eger sabit_tip == "sayi" {
+            yaz_u8(dosya, 0); // BVal::NUM = 0
+            yaz_f64(dosya, sabit);
+        }
+        eger sabit_tip == "metin" {
+            yaz_u8(dosya, 2); // BVal::STR = 2
+            yaz_str(dosya, sabit);
+        }
+        eger sabit_tip == "mantik" {
+            yaz_u8(dosya, 1); // BVal::BOOL = 1
+            eger sabit { yaz_u8(dosya, 1); }
+            yoksa { yaz_u8(dosya, 0); }
+        }
+        eger sabit_tip == "liste" {
+            // Sub-chunk (fonksiyon)
+            yaz_u8(dosya, 4); // BVal::FUNC = 4
+            chunk_kaydet(dosya, sabit);
+        }
+        si = si + 1;
+    }
+    // bytecode
+    yaz_u32(dosya, uzunluk(chunk_kod(ch)));
+    degisken ki = 0;
+    iken ki < uzunluk(chunk_kod(ch)) {
+        yaz_u8(dosya, chunk_kod(ch)[ki]);
+        ki = ki + 1;
+    }
+}
+
+// ── ANA DERLEME FONKSİYONU ──
+fonk zedin_derle(kaynak_dosya, cikti_dosya) {
+    yaz "Okunuyor: " + kaynak_dosya;
+    degisken icerik_sonuc = oku_dosya(kaynak_dosya);
+    eger hata_mi(icerik_sonuc) {
+        yaz "Hata: " + mesaj_al(icerik_sonuc);
+        don ters;
+    }
+    degisken kaynak = deger_al(icerik_sonuc);
+    yaz "Taranıyor...";
+    degisken tokenlar = tara(kaynak);
+    yaz "Parse ediliyor...";
+    degisken ast = parse(tokenlar);
+    yaz "Derleniyor...";
+    degisken ch = derle_program(ast);
+    yaz "Dosyaya yaziliyor: " + cikti_dosya;
+    byte_dosya_temizle(cikti_dosya);
+    // Magic + versiyon
+    byte_yaz(cikti_dosya, 90);  // Z
+    byte_yaz(cikti_dosya, 69);  // E
+    byte_yaz(cikti_dosya, 68);  // D
+    byte_yaz(cikti_dosya, 67);  // C
+    byte_yaz(cikti_dosya, 1);   // versiyon
+    chunk_kaydet(cikti_dosya, ch);
+    yaz "Tamamlandi!";
+    don tuz;
+}

@@ -1,0 +1,13 @@
+aktar "interpreter.zed";
+aktar "compiler.zed";
+
+degisken ch = chunk_yeni("<ana>");
+chunk_degisken_ekle(ch, "selam");
+degisken idx = chunk_degisken_bul(ch, "selam");
+yaz "idx: " + metine(idx);
+yaz "idx >= 0: " + metine(idx >= 0);
+eger idx >= 0 {
+    yaz "LOKAL yolu";
+} yoksa {
+    yaz "GLOBAL yolu";
+}

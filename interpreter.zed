@@ -471,17 +471,24 @@ fonk degerlendir(dugum) {
                 scope_tani(params[pi], global_getir("_a_" + metine(_cid) + "_" + metine(pi)));
                 pi = pi + 1;
             }
-            global_ata("_don_s", ters);
-            global_ata("_don_d", 0);
+            
+            degisken eski_sinyal = _don_sinyali;
+            degisken eski_deger = _don_degeri;
+            _don_sinyali = ters;
+            _don_degeri = 0;
+            // calistir_blok yerine direkt stmtleri calistir
+
             degisken blok_stmtler = fn[1][1];
             degisken bi = 0;
             iken bi < uzunluk(blok_stmtler) ve global_getir("_don_s") == ters {
                 calistir(blok_stmtler[bi]);
                 bi = bi + 1;
             }
-            degisken fn_sonuc = global_getir("_don_d");
-            global_ata("_don_s", ters);
-            global_ata("_don_d", 0);
+
+            degisken fn_sonuc = _don_degeri;
+            _don_sinyali = eski_sinyal;
+            _don_degeri = eski_deger;
+
             scope_kapat();
             don fn_sonuc;
         }

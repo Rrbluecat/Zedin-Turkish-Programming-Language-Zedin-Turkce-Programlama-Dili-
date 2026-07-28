@@ -35,6 +35,13 @@ fonk harf_mi(k) {
          // Turkce buyuk harfler
          k == "G" veya k == "S" veya k == "I" veya
          k == "O" veya k == "U" veya k == "C");
+=======
+         k == "M" veya k == "N" veya k == "O" veya k == "P" veya k == "Q" veya
+         k == "R" veya k == "S" veya k == "T" veya k == "U" veya
+         k == "V" veya k == "X" veya k == "Y" veya k == "Z" veya k == "_" veya
+         k == "ğ" veya k == "ü" veya k == "ş" veya k == "ı" veya k == "ö" veya k == "ç" veya
+         k == "Ğ" veya k == "Ü" veya k == "Ş" veya k == "İ" veya k == "Ö" veya k == "Ç");
+>>>>>>> 41fd7c8 (Büyük self host başarımıyla Zedin aylar sonra karşınızda)
 }
 
 fonk rakam_mi(k) {
