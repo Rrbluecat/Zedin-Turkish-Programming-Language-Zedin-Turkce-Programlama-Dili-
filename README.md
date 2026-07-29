@@ -43,6 +43,7 @@ Dosya uzantısı: `.zed`
 | 🖥️ ODY | ✅ | Oku-Değerlendir-Yaz etkileşimli ortam |
 | 🔧 C Transpiler | ✅ | Zedin → C → native binary |
 | 📦 ZPM | ✅ | Zedin Paket Yöneticisi |
+| 🔄 Self-hosting Compiler | ✅ %100 | Compiler tamamen `.zed` ile yazıldı — gerçek `.zedc` binary üretiyor |
 
 ---
 
@@ -82,6 +83,10 @@ gcc program.c -o program -lm
 # ODY - Etkileşimli ortam (Self-hosting REPL)
 cat interpreter.zed ody.zed > ody_tam.zed
 zedin ody_tam.zed
+
+# Self-hosting compiler ile derle
+aktar "interpreter.zed"; aktar "compiler.zed"; zedin_derle("program.zed", "program.zedc");
+zedin program.zedc
 ```
 
 ---
@@ -127,6 +132,8 @@ Parser      → parser.zed       ✅ %100
 Interpreter → interpreter.zed  ✅ %100
 Stdlib      → stdlib.zed       ✅ %100
 ODY (REPL)  → ody.zed          ✅ %100
+Compiler    → compiler.zed  ✅ %100
+
 ```
 
 ```bash
@@ -243,8 +250,9 @@ sayi_mi(metin)               # "123" → true
 - [x] Türkçe Yazılım Terimleri Sözlüğü
 - [ ] VS Code sözdizimi desteği
 - [ ] ARM Assembly backend
-- [ ] Tam self-compiling (Zedin → Zedin binary)
-
+- [x] **Self-hosting Compiler %100** (Zedin → .zedc binary, özyinelemeli fonksiyonlar dahil)
+- [ ] Tam self-compiling (Zedin → Zedin binary, C++ olmadan)
+      
 ---
 
 ## Neden Zedin?
