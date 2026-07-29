@@ -132,8 +132,7 @@ Parser      → parser.zed       ✅ %100
 Interpreter → interpreter.zed  ✅ %100
 Stdlib      → stdlib.zed       ✅ %100
 ODY (REPL)  → ody.zed          ✅ %100
-Compiler    → compiler.zed  ✅ %100
-
+Compiler    → compiler.zed     ✅ %100
 ```
 
 ```bash
