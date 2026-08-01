@@ -1,4 +1,4 @@
-fonk topla(a, b) {
-    don a + b;
+fonk selam(isim: metin) {
+    yaz "Merhaba " + isim;
 }
-yaz topla(1, 2);
+selam("Zedin");

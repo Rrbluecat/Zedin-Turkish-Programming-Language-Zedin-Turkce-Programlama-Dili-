@@ -98,6 +98,7 @@ fonk tara(kaynak) {
         eger k == "[" { tok_ekle(tokenlar, "LSQ", "["); i = i+1; devam; }
         eger k == "]" { tok_ekle(tokenlar, "RSQ", "]"); i = i+1; devam; }
         eger k == "?" { tok_ekle(tokenlar, "SORU", "?"); i = i+1; devam; }
+        eger k == ":" { tok_ekle(tokenlar, "COLON", ":"); i = i+1; devam; }
         i = i+1;
     }
     tok_ekle(tokenlar, "EOF", "");
@@ -240,11 +241,20 @@ fonk parse_stmt() {
     eger p_kw("fonk") {
         p_ilerle(); degisken isim = p_esles("ID"); p_esles("LP");
         degisken params = [];
+        degisken param_tipleri = [];
         iken p_tip() != "RP" ve p_tip() != "EOF" {
             eger uzunluk(params) > 0 { p_esles("CM"); }
             ekle(params, p_esles("ID"));
+            eger p_tip() == "COLON" {
+                p_ilerle();
+                ekle(param_tipleri, p_esles("ID"));
+            } yoksa {
+                ekle(param_tipleri, "");
+            }
         }
-        p_esles("RP"); don ["FONK", isim, params, parse_blok()];
+        p_esles("RP");
+        degisken donus_tipi = "";
+        don ["FONK", isim, params, parse_blok(), param_tipleri, donus_tipi];
     }
     eger p_kw("kir")   { p_ilerle(); p_esles("SC"); don ["KIR"]; }
     eger p_kw("devam") { p_ilerle(); p_esles("SC"); don ["DEVAM"]; }

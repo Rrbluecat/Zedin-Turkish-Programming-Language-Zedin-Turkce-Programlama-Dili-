@@ -181,15 +181,21 @@ fonk tip_kontrol(ast) {
     degisken i = 0;
     iken i < uzunluk(ast) {
         eger ast[i][0] == "FONK" {
-            // Parametre listesini kaydet (tip bilgisi olmasa da sayisi)
             degisken fn_params = ast[i][2];
             degisken fn_param_tipleri = [];
-            degisken fpi = 0;
-            iken fpi < uzunluk(fn_params) {
-                ekle(fn_param_tipleri, "");
-                fpi = fpi + 1;
+            // Yeni format: [FONK, isim, params, govde, param_tipleri, donus_tipi]
+            eger uzunluk(ast[i]) > 4 {
+                fn_param_tipleri = ast[i][4];
+            } yoksa {
+                degisken fpi = 0;
+                iken fpi < uzunluk(fn_params) {
+                    ekle(fn_param_tipleri, "");
+                    fpi = fpi + 1;
+                }
             }
-            imza_ekle(ast[i][1], fn_param_tipleri, "");
+            degisken fn_donus = "";
+            eger uzunluk(ast[i]) > 5 { fn_donus = ast[i][5]; }
+            imza_ekle(ast[i][1], fn_param_tipleri, fn_donus);
         }
         i = i + 1;
     }
