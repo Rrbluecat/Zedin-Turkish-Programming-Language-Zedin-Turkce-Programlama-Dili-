@@ -1,7 +1,6 @@
 // ============================================================
 // interpreter.zed - Zedin Self-hosting Interpreter v4
 // scope_kapat duzeltmesi + sinyal_temizle basta cagrilir
-// tip/dugum_tip isim catismasi giderildi (2026-07-31)
 // ============================================================
 
 fonk harf_mi(k) {
@@ -268,6 +267,7 @@ fonk parse(tokenlar) {
 
 fonk sc_init() {
     global_ata("_sc_boy", 0);
+global_ata("_cagri_id", 0);
     global_ata("_katman", 0);
     global_ata("_don_s", ters);
     global_ata("_don_d", 0);
@@ -351,23 +351,21 @@ fonk fn_bul(isim) {
 }
 
 // ============================================================
-// DEGERLENDIR - Ifade degerlendirici
-// NOT: yerel degisken adi kasitli olarak 'dugum_tip' - native
-// fonksiyon 'tip()' ile isim catismasini onlemek icin.
+// DEGERLENDIR
 // ============================================================
 fonk degerlendir(dugum) {
     eger dugum == bos { don 0; }
-    degisken dugum_tip = dugum[0];
+    degisken tip = dugum[0];
 
-    eger dugum_tip == "SAYI" { don sayiya(dugum[1]); }
-    eger dugum_tip == "STR"  { don dugum[1]; }
-    eger dugum_tip == "BOOL" {
+    eger tip == "SAYI" { don sayiya(dugum[1]); }
+    eger tip == "STR"  { don dugum[1]; }
+    eger tip == "BOOL" {
         eger dugum[1] == "1" { don tuz; }
         don ters;
     }
-    eger dugum_tip == "ID" { don scope_getir(dugum[1]); }
+    eger tip == "ID" { don scope_getir(dugum[1]); }
 
-    eger dugum_tip == "LISTE" {
+    eger tip == "LISTE" {
         degisken sonuc = []; degisken i = 0;
         iken i < uzunluk(dugum[1]) {
             global_ata("_tmp_liste", sonuc);
@@ -378,13 +376,13 @@ fonk degerlendir(dugum) {
         don sonuc;
     }
 
-    eger dugum_tip == "INDEX" {
+    eger tip == "INDEX" {
         degisken nesne = degerlendir(dugum[1]);
         degisken idx   = degerlendir(dugum[2]);
         don nesne[idx];
     }
 
-    eger dugum_tip == "SORU_OP" {
+    eger tip == "SORU_OP" {
         degisken ic_deger = degerlendir(dugum[1]);
         eger tip(ic_deger) == "sonuc" {
             eger hata_mi(ic_deger) {
@@ -397,7 +395,7 @@ fonk degerlendir(dugum) {
         don ic_deger;
     }
 
-    eger dugum_tip == "ATAMA" {
+    eger tip == "ATAMA" {
         degisken hedef = dugum[1];
         degisken deger = degerlendir(dugum[2]);
         eger hedef[0] == "INDEX" {
@@ -416,7 +414,7 @@ fonk degerlendir(dugum) {
         don deger;
     }
 
-    eger dugum_tip == "BINOP" {
+    eger tip == "BINOP" {
         degisken op = dugum[1];
         eger op == "ve" {
             degisken sol = degerlendir(dugum[2]);
@@ -444,20 +442,21 @@ fonk degerlendir(dugum) {
         don 0;
     }
 
-    eger dugum_tip == "CAGRI" {
+    eger tip == "CAGRI" {
         degisken isim   = dugum[1];
-        degisken arglar_ast = dugum[2];
-        degisken hesaplanan = [];
+        degisken arglar = dugum[2];
+        degisken _cid   = global_getir("_cagri_id");
+        global_ata("_cagri_id", _cid + 1);
         degisken ai = 0;
-        iken ai < uzunluk(arglar_ast) {
-            ekle(hesaplanan, degerlendir(arglar_ast[ai]));
+        iken ai < uzunluk(arglar) {
+            global_ata("_a_" + metine(_cid) + "_" + metine(ai), degerlendir(arglar[ai]));
             ai = ai + 1;
         }
-        degisken _an = uzunluk(hesaplanan);
-        degisken _a0 = bos; degisken _a1 = bos; degisken _a2 = bos;
-        eger _an > 0 { _a0 = hesaplanan[0]; }
-        eger _an > 1 { _a1 = hesaplanan[1]; }
-        eger _an > 2 { _a2 = hesaplanan[2]; }
+        global_ata("_a_" + metine(_cid) + "_n", uzunluk(arglar));
+        degisken _a0 = global_getir("_a_" + metine(_cid) + "_0");
+        degisken _a1 = global_getir("_a_" + metine(_cid) + "_1");
+        degisken _a2 = global_getir("_a_" + metine(_cid) + "_2");
+        degisken _an = global_getir("_a_" + metine(_cid) + "_n");
 
         eger isim == "yaz"        { eger _an > 0 { yaz _a0; } don 0; }
         eger isim == "uzunluk"    { eger _an > 0 { don uzunluk(_a0); } don 0; }
@@ -485,6 +484,7 @@ fonk degerlendir(dugum) {
         eger isim == "hata_mi"       { eger _an > 0 { don hata_mi(_a0); } don ters; }
         eger isim == "mesaj_al"      { eger _an > 0 { don mesaj_al(_a0); } don ""; }
         eger isim == "oku_dosya"     { eger _an > 0 { don oku_dosya(_a0); } don 0; }
+        eger isim == "liste_ekle"    { eger _an >= 2 { global_ata("_tmp_le2", _a0); global_ekle("_tmp_le2", _a1); don global_getir("_tmp_le2"); } don []; }
 
         degisken fn = fn_bul(isim);
         eger fn != bos {
@@ -492,12 +492,10 @@ fonk degerlendir(dugum) {
             degisken params = fn[0];
             degisken pi = 0;
             iken pi < uzunluk(params) {
-                degisken pval = bos;
-                eger pi < uzunluk(hesaplanan) { pval = hesaplanan[pi]; }
-                scope_tani(params[pi], pval);
+                scope_tani(params[pi], global_getir("_a_" + metine(_cid) + "_" + metine(pi)));
                 pi = pi + 1;
             }
-
+            
             degisken eski_don_s = global_getir("_don_s");
             degisken eski_don_d = global_getir("_don_d");
             global_ata("_don_s", ters);
@@ -520,109 +518,3 @@ fonk degerlendir(dugum) {
         yaz "Bilinmeyen fonksiyon: " + isim;
         don 0;
     }
-    don 0;
-}
-
-// ============================================================
-// CALISTIR - Statement yurutucu
-// NOT: yerel degisken adi kasitli olarak 'stmt_tip' - ayni
-// dosyada 'tip()' native fonksiyonuyla catismasin diye.
-// ============================================================
-fonk calistir(stmt) {
-    eger stmt == bos { don 0; }
-    degisken stmt_tip = stmt[0];
-
-    eger stmt_tip == "DEGISKEN" {
-        degisken deger = degerlendir(stmt[2]);
-        scope_tani(stmt[1], deger);
-        don 0;
-    }
-
-    eger stmt_tip == "YAZ" {
-        yaz degerlendir(stmt[1]);
-        don 0;
-    }
-
-    eger stmt_tip == "IFADE" {
-        degerlendir(stmt[1]);
-        don 0;
-    }
-
-    eger stmt_tip == "EGER" {
-        eger degerlendir(stmt[1]) {
-            calistir_blok_ic(stmt[2][1]);
-        } yoksa {
-            eger uzunluk(stmt[3]) > 0 {
-                calistir_blok_ic(stmt[3][1]);
-            }
-        }
-        don 0;
-    }
-
-    eger stmt_tip == "IKEN" {
-        iken degerlendir(stmt[1]) ve herhangi_sinyal() == ters {
-            calistir_blok_ic(stmt[2][1]);
-            eger global_getir("_dev_s") {
-                global_ata("_dev_s", ters);
-            }
-        }
-        eger global_getir("_kir_s") {
-            global_ata("_kir_s", ters);
-        }
-        don 0;
-    }
-
-    eger stmt_tip == "FONK" {
-        degisken fn_val = [stmt[2], stmt[3]];
-        scope_tani(stmt[1], fn_val);
-        fn_kaydet(stmt[1], fn_val);
-        don 0;
-    }
-
-    eger stmt_tip == "DON" {
-        global_ata("_don_d", degerlendir(stmt[1]));
-        global_ata("_don_s", tuz);
-        don 0;
-    }
-
-    eger stmt_tip == "KIR" {
-        global_ata("_kir_s", tuz);
-        don 0;
-    }
-
-    eger stmt_tip == "DEVAM" {
-        global_ata("_dev_s", tuz);
-        don 0;
-    }
-
-    don 0;
-}
-
-fonk calistir_blok_ic(stmtler) {
-    scope_ac();
-    degisken i = 0;
-    iken i < uzunluk(stmtler) ve herhangi_sinyal() == ters {
-        calistir(stmtler[i]);
-        i = i + 1;
-    }
-    scope_kapat();
-    don 0;
-}
-
-fonk calistir_program(stmtler) {
-    degisken i = 0;
-    iken i < uzunluk(stmtler) {
-        calistir(stmtler[i]);
-        i = i + 1;
-    }
-}
-
-// ============================================================
-// CALISTIR_KOD - Ana giris noktasi
-// ============================================================
-fonk calistir_kod(kod) {
-    sc_init();
-    degisken tokenlar = tara(kod);
-    degisken ast = parse(tokenlar);
-    calistir_program(ast);
-}

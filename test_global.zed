@@ -1,11 +1,2 @@
-degisken x = 42;
-degisken isim = "Zedin";
-
-fonk goster() {
-    yaz isim;
-    yaz x + 5;
-}
-
-goster();
-x = x + 10;
-yaz x;
+global_ata("test_x", 42);
+yaz global_getir("test_x");

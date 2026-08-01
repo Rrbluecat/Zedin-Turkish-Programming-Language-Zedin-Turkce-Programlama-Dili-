@@ -1,0 +1,31 @@
+aktar "interpreter.zed";
+
+degisken kod = "
+fonk guvenli_bol(a, b) {
+    eger b == 0 {
+        don hata(\"sifira bolme\");
+    }
+    don tamam(a / b);
+}
+
+fonk hesapla(a, b) {
+    degisken sonuc = guvenli_bol(a, b)?;
+    don tamam(sonuc * 2);
+}
+
+degisken r1 = hesapla(10, 2);
+eger tamam_mi(r1) {
+    yaz \"basarili: \" + metine(deger_al(r1));
+} yoksa {
+    yaz \"hata: \" + mesaj_al(r1);
+}
+
+degisken r2 = hesapla(10, 0);
+eger tamam_mi(r2) {
+    yaz \"basarili: \" + metine(deger_al(r2));
+} yoksa {
+    yaz \"hata: \" + mesaj_al(r2);
+}
+";
+
+calistir_kod(kod);
