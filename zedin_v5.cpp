@@ -1007,6 +1007,34 @@ private:
                 return Val(0.0);
             return Val((double)(unsigned char)args[0].str[0]);
         }));
+
+        // byte_oku(yol, konum) → dosyadan tek byte okur
+        globals->define("byte_oku", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.size() < 2) return Val::makeResult(false, Val(string("yol ve konum gerekli")));
+            ifstream f(args[0].str, ios::binary);
+            if (!f.is_open()) return Val::makeResult(false, Val(string("dosya acilamadi")));
+            f.seekg((long)args[1].num);
+            if (f.fail()) return Val::makeResult(false, Val(string("konum hatasi")));
+            uint8_t b;
+            f.read((char*)&b, 1);
+            if (f.fail()) return Val::makeResult(false, Val(string("okuma hatasi")));
+            return Val::makeResult(true, Val((double)b));
+        }));
+
+        // byte_dosya_boyut(yol) → dosya boyutunu dondurur
+        globals->define("byte_dosya_boyut", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.empty()) return Val::makeResult(false, Val(string("yol gerekli")));
+            ifstream f(args[0].str, ios::binary | ios::ate);
+            if (!f.is_open()) return Val::makeResult(false, Val(string("dosya acilamadi")));
+            return Val::makeResult(true, Val((double)f.tellg()));
+        }));
+
+        // karakter_yap(ascii) → ASCII kodundan karakter olusturur
+        globals->define("karakter_yap", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.empty()) return Val(string(""));
+            char c = (char)((int)args[0].num & 0xFF);
+            return Val(string(1, c));
+        }));
     }
 
     // --- Statement yürütücü ---

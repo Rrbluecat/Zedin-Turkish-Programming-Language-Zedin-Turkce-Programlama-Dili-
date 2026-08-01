@@ -3,6 +3,207 @@
 // Self-hosting v1: AST → .zedc binary format
 // ============================================================
 
+// ============================================================
+// TIP KONTROL - Derleme zamani tip kontrolu
+// AST'yi gezip fonksiyon imzalarini toplar,
+// cagri yerlerinde arguman tiplerini karsilastirir
+// ============================================================
+
+// Fonksiyon imza tablosu: [[isim, [param_tipleri], donus_tipi], ...]
+degisken _fn_imzalar = [];
+
+fonk imza_ekle(isim, param_tipleri, donus_tipi) {
+    ekle(_fn_imzalar, [isim, param_tipleri, donus_tipi]);
+}
+
+fonk imza_bul(isim) {
+    degisken i = 0;
+    iken i < uzunluk(_fn_imzalar) {
+        eger _fn_imzalar[i][0] == isim { don _fn_imzalar[i]; }
+        i = i + 1;
+    }
+    don bos;
+}
+
+// AST dugumunden tip cikart (literaller icin)
+fonk ast_tip(dugum) {
+    eger dugum == bos { don "bos"; }
+    degisken dt = dugum[0];
+    eger dt == "SAYI"  { don "sayi"; }
+    eger dt == "STR"   { don "metin"; }
+    eger dt == "BOOL"  { don "mantik"; }
+    eger dt == "LISTE" { don "liste"; }
+    don "";  // bilinmiyor (degisken, cagri sonucu vs.)
+}
+
+// Tek bir statement icindeki tip hatalarini topla
+fonk tip_kontrol_stmt(stmt, hatalar) {
+    eger stmt == bos { don 0; }
+    degisken st = stmt[0];
+
+    eger st == "FONK" {
+        // Fonksiyon imzasini kaydet
+        degisken isim = stmt[1];
+        degisken params = stmt[2];
+        degisken govde = stmt[3];
+
+        // Parametre tiplerini cikart (["isim:tip", ...] formatindan)
+        degisken param_tipleri = [];
+        degisken pi = 0;
+        iken pi < uzunluk(params) {
+            ekle(param_tipleri, "");  // interpreter.zed'de tip bilgisi ayri tutulur
+            pi = pi + 1;
+        }
+
+        // Donus tipi (su an "" - ileride -> sozdizimi ile)
+        imza_ekle(isim, param_tipleri, "");
+
+        // Govde icindeki stmtleri de kontrol et
+        eger uzunluk(govde) > 1 {
+            degisken blok_stmtler = govde[1];
+            degisken bi = 0;
+            iken bi < uzunluk(blok_stmtler) {
+                tip_kontrol_stmt(blok_stmtler[bi], hatalar);
+                bi = bi + 1;
+            }
+        }
+        don 0;
+    }
+
+    eger st == "IFADE" veya st == "DEGISKEN" {
+        tip_kontrol_ifade(stmt[1], hatalar);
+        don 0;
+    }
+
+    eger st == "YAZ" {
+        tip_kontrol_ifade(stmt[1], hatalar);
+        don 0;
+    }
+
+    eger st == "DON" {
+        tip_kontrol_ifade(stmt[1], hatalar);
+        don 0;
+    }
+
+    eger st == "EGER" {
+        tip_kontrol_ifade(stmt[1], hatalar);
+        eger uzunluk(stmt[2]) > 1 {
+            degisken bi = 0;
+            degisken blok = stmt[2][1];
+            iken bi < uzunluk(blok) { tip_kontrol_stmt(blok[bi], hatalar); bi = bi + 1; }
+        }
+        eger uzunluk(stmt) > 3 ve uzunluk(stmt[3]) > 1 {
+            degisken bi = 0;
+            degisken blok = stmt[3][1];
+            iken bi < uzunluk(blok) { tip_kontrol_stmt(blok[bi], hatalar); bi = bi + 1; }
+        }
+        don 0;
+    }
+
+    eger st == "IKEN" {
+        tip_kontrol_ifade(stmt[1], hatalar);
+        eger uzunluk(stmt[2]) > 1 {
+            degisken bi = 0;
+            degisken blok = stmt[2][1];
+            iken bi < uzunluk(blok) { tip_kontrol_stmt(blok[bi], hatalar); bi = bi + 1; }
+        }
+        don 0;
+    }
+
+    don 0;
+}
+
+// Ifade icindeki tip hatalarini kontrol et
+fonk tip_kontrol_ifade(dugum, hatalar) {
+    eger dugum == bos { don ""; }
+    degisken dt = dugum[0];
+
+    eger dt == "CAGRI" {
+        degisken isim = dugum[1];
+        degisken arglar = dugum[2];
+
+        // Once arglar icini kontrol et (recursive)
+        degisken ai = 0;
+        iken ai < uzunluk(arglar) {
+            tip_kontrol_ifade(arglar[ai], hatalar);
+            ai = ai + 1;
+        }
+
+        // Imza var mi?
+        degisken imza = imza_bul(isim);
+        eger imza != bos {
+            degisken param_tipleri = imza[1];
+            // Arguman sayisi kontrolu
+            eger uzunluk(arglar) != uzunluk(param_tipleri) {
+                eger uzunluk(param_tipleri) > 0 {
+                    ekle(hatalar, isim + "(): " + metine(uzunluk(param_tipleri)) +
+                        " arguman beklendi, " + metine(uzunluk(arglar)) + " verildi");
+                }
+            } yoksa {
+                // Literal tip kontrolu
+                degisken ti = 0;
+                iken ti < uzunluk(param_tipleri) {
+                    degisken beklenen = param_tipleri[ti];
+                    eger uzunluk(beklenen) > 0 {
+                        degisken gelen = ast_tip(arglar[ti]);
+                        eger uzunluk(gelen) > 0 ve gelen != beklenen {
+                            ekle(hatalar, isim + "(): " + metine(ti + 1) +
+                                ". arguman '" + beklenen + "' olmali, '" + gelen + "' verildi");
+                        }
+                    }
+                    ti = ti + 1;
+                }
+            }
+        }
+        don "";
+    }
+
+    eger dt == "BINOP" {
+        tip_kontrol_ifade(dugum[2], hatalar);
+        tip_kontrol_ifade(dugum[3], hatalar);
+        don "";
+    }
+
+    eger dt == "SORU_OP" {
+        tip_kontrol_ifade(dugum[1], hatalar);
+        don "";
+    }
+
+    don ast_tip(dugum);
+}
+
+// Ana tip kontrol fonksiyonu
+fonk tip_kontrol(ast) {
+    _fn_imzalar = [];
+    degisken hatalar = [];
+
+    // Once tum fonksiyon imzalarini topla (forward declaration icin)
+    degisken i = 0;
+    iken i < uzunluk(ast) {
+        eger ast[i][0] == "FONK" {
+            // Parametre listesini kaydet (tip bilgisi olmasa da sayisi)
+            degisken fn_params = ast[i][2];
+            degisken fn_param_tipleri = [];
+            degisken fpi = 0;
+            iken fpi < uzunluk(fn_params) {
+                ekle(fn_param_tipleri, "");
+                fpi = fpi + 1;
+            }
+            imza_ekle(ast[i][1], fn_param_tipleri, "");
+        }
+        i = i + 1;
+    }
+
+    // Sonra tam kontrol yap
+    i = 0;
+    iken i < uzunluk(ast) {
+        tip_kontrol_stmt(ast[i], hatalar);
+        i = i + 1;
+    }
+
+    don hatalar;
+}
+
 // ── OPCODE SABİTLERİ ──
 degisken OP_SAYI        = 0;
 degisken OP_METIN       = 1;
@@ -435,6 +636,16 @@ fonk zedin_derle(kaynak_dosya, cikti_dosya) {
     degisken tokenlar = tara(kaynak);
     yaz "Parse ediliyor...";
     degisken ast = parse(tokenlar);
+    yaz "Tip kontrolu yapiliyor...";
+    degisken tip_hatalar = tip_kontrol(ast);
+    eger uzunluk(tip_hatalar) > 0 {
+        degisken hi = 0;
+        iken hi < uzunluk(tip_hatalar) {
+            yaz "[Tip Hatasi] " + tip_hatalar[hi];
+            hi = hi + 1;
+        }
+        don ters;
+    }
     yaz "Derleniyor...";
     degisken ch = derle_program(ast);
     yaz "Dosyaya yaziliyor: " + cikti_dosya;

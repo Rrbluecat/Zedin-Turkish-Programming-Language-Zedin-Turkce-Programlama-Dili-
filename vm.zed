@@ -1,0 +1,441 @@
+// ============================================================
+// vm.zed - Zedin ile yazilmis Bytecode VM
+// ============================================================
+
+degisken OP_SAYI        = 0;
+degisken OP_METIN       = 1;
+degisken OP_TUZ         = 2;
+degisken OP_TERS        = 3;
+degisken OP_BOS         = 4;
+degisken OP_YUKLE       = 5;
+degisken OP_SAKLA       = 6;
+degisken OP_TANI        = 7;
+degisken OP_TOPLA       = 8;
+degisken OP_CIKAR       = 9;
+degisken OP_CARP        = 10;
+degisken OP_BOL         = 11;
+degisken OP_MOD         = 12;
+degisken OP_NEG         = 13;
+degisken OP_ESIT        = 14;
+degisken OP_ESIT_DEGIL  = 15;
+degisken OP_BUYUK       = 16;
+degisken OP_KUCUK       = 17;
+degisken OP_BUYUK_ESIT  = 18;
+degisken OP_KUCUK_ESIT  = 19;
+degisken OP_VE          = 20;
+degisken OP_VEYA        = 21;
+degisken OP_DEGIL       = 22;
+degisken OP_LISTE       = 23;
+degisken OP_INDEKS_AL   = 24;
+degisken OP_INDEKS_ATA  = 25;
+degisken OP_ATLA        = 26;
+degisken OP_ATLA_YANLIS = 27;
+degisken OP_ATLA_DOGRU  = 28;
+degisken OP_CAGIR       = 29;
+degisken OP_DON         = 30;
+degisken OP_DON_BOS     = 31;
+degisken OP_KIR         = 32;
+degisken OP_DEVAM       = 33;
+degisken OP_YUKLE_GLOBAL = 34;
+degisken OP_SAKLA_GLOBAL = 35;
+degisken OP_TANI_GLOBAL  = 36;
+degisken OP_YAZ         = 37;
+degisken OP_POP         = 38;
+degisken OP_KOPYALA     = 39;
+degisken OP_HALT        = 40;
+
+// ── .zedc DOSYA OKUYUCU ──
+
+degisken _rd_dosya = "";
+degisken _rd_pos = 0;
+
+fonk rd_u8() {
+    degisken sonuc = byte_oku(_rd_dosya, _rd_pos);
+    _rd_pos = _rd_pos + 1;
+    don deger_al(sonuc);
+}
+
+fonk rd_u16() {
+    degisken lo = rd_u8();
+    degisken hi = rd_u8();
+    don lo + bit_kaydir_sol(hi, 8);
+}
+
+fonk rd_u32() {
+    degisken b0 = rd_u8();
+    degisken b1 = rd_u8();
+    degisken b2 = rd_u8();
+    degisken b3 = rd_u8();
+    don b0 + bit_kaydir_sol(b1, 8) + bit_kaydir_sol(b2, 16) + bit_kaydir_sol(b3, 24);
+}
+
+fonk rd_str() {
+    degisken uzun = rd_u16();
+    degisken s = "";
+    degisken i = 0;
+    iken i < uzun {
+        degisken kod = rd_u8();
+        s = s + karakter_yap(kod);
+        i = i + 1;
+    }
+    don s;
+}
+
+fonk rd_f64() {
+    degisken bytelar = [];
+    degisken i = 0;
+    iken i < 8 {
+        ekle(bytelar, rd_u8());
+        i = i + 1;
+    }
+    degisken komut = "python3 -c \"import struct; print(struct.unpack('d', bytes(" + metine(bytelar) + "))[0])\"";
+    degisken sonuc = komut_calistir(komut);
+    eger tamam_mi(sonuc) { don sayiya(deger_al(sonuc)); }
+    don 0;
+}
+
+fonk rd_chunk() {
+    degisken isim = rd_str();
+    degisken param_sayisi = rd_u8();
+    degisken param_adedi = rd_u8();
+    degisken params = [];
+    degisken pi = 0;
+    iken pi < param_adedi {
+        ekle(params, rd_str());
+        pi = pi + 1;
+    }
+    degisken deg_adedi = rd_u16();
+    degisken degiskenler = [];
+    degisken di = 0;
+    iken di < deg_adedi {
+        ekle(degiskenler, rd_str());
+        di = di + 1;
+    }
+    degisken sabit_adedi = rd_u16();
+    degisken sabitler = [];
+    degisken si = 0;
+    iken si < sabit_adedi {
+        degisken tip = rd_u8();
+        eger tip == 0 { ekle(sabitler, ["SAYI", rd_f64()]); }
+        eger tip == 1 {
+            degisken b = rd_u8();
+            eger b == 1 { ekle(sabitler, ["BOOL", tuz]); }
+            yoksa { ekle(sabitler, ["BOOL", ters]); }
+        }
+        eger tip == 2 { ekle(sabitler, ["METIN", rd_str()]); }
+        eger tip == 4 { ekle(sabitler, ["FUNC", rd_chunk()]); }
+        si = si + 1;
+    }
+    degisken kod_boyut = rd_u32();
+    degisken kod = [];
+    degisken ki = 0;
+    iken ki < kod_boyut {
+        ekle(kod, rd_u8());
+        ki = ki + 1;
+    }
+    don [kod, sabitler, degiskenler, params, isim, param_sayisi];
+}
+
+fonk zedc_yukle(dosya) {
+    _rd_dosya = dosya;
+    _rd_pos = 0;
+    rd_u8(); rd_u8(); rd_u8(); rd_u8(); rd_u8();
+    don rd_chunk();
+}
+
+// ── VM DURUMU ──
+
+degisken _stack = [];
+degisken _globals = [];
+degisken _frames = [];
+
+// Stack işlemleri
+fonk vm_push(v) { ekle(_stack, v); }
+fonk vm_pop() {
+    degisken v = _stack[uzunluk(_stack) - 1];
+    cikar(_stack, uzunluk(_stack) - 1);
+    don v;
+}
+fonk vm_peek() { don _stack[uzunluk(_stack) - 1]; }
+
+// Global değişken işlemleri
+fonk global_tani(isim, deger) {
+    ekle(_globals, [isim, deger]);
+}
+fonk global_al(isim) {
+    degisken i = uzunluk(_globals) - 1;
+    iken i >= 0 {
+        eger _globals[i][0] == isim { don _globals[i][1]; }
+        i = i - 1;
+    }
+    yaz "Tanimsiz global: " + isim;
+    don bos;
+}
+fonk global_ata(isim, deger) {
+    degisken i = uzunluk(_globals) - 1;
+    iken i >= 0 {
+        eger _globals[i][0] == isim {
+            _globals[i][1] = deger;
+            don tuz;
+        }
+        i = i - 1;
+    }
+    ekle(_globals, [isim, deger]);
+    don tuz;
+}
+
+// Frame işlemleri: [chunk, ip, locals]
+fonk frame_yeni(chunk) {
+    degisken locals = [];
+    degisken li = 0;
+    iken li < uzunluk(chunk[2]) {
+        ekle(locals, bos);
+        li = li + 1;
+    }
+    don [chunk, 0, locals];
+}
+fonk frame_oku(frame) {
+    degisken b = frame[0][0][frame[1]];
+    frame[1] = frame[1] + 1;
+    don b;
+}
+fonk frame_oku_arg(frame) {
+    degisken lo = frame_oku(frame);
+    degisken hi = frame_oku(frame);
+    don lo + bit_kaydir_sol(hi, 8);
+}
+fonk frame_oku_jump(frame) {
+    degisken lo = frame_oku(frame);
+    degisken hi = frame_oku(frame);
+    degisken offset = lo + bit_kaydir_sol(hi, 8);
+    eger offset > 32767 { offset = offset - 65536; }
+    don offset;
+}
+
+// ── ANA VM DÖNGÜSÜ ──
+fonk vm_calistir(chunk) {
+    _stack = [];
+    _globals = [];
+    _frames = [];
+    ekle(_frames, frame_yeni(chunk));
+
+    iken uzunluk(_frames) > 0 {
+        degisken frame = _frames[uzunluk(_frames) - 1];
+        degisken kod = frame[0][0];
+
+        eger frame[1] >= uzunluk(kod) {
+            cikar(_frames, uzunluk(_frames) - 1);
+            devam;
+        }
+
+        degisken op = frame_oku(frame);
+        _frames[uzunluk(_frames) - 1] = frame;
+
+        eger op == OP_SAYI {
+            degisken idx = frame_oku_arg(frame);
+            degisken sabit = frame[0][1][idx];
+            vm_push(sabit[1]);
+            _frames[uzunluk(_frames) - 1] = frame;
+        }
+        eger op == OP_METIN {
+            degisken idx = frame_oku_arg(frame);
+            degisken sabit = frame[0][1][idx];
+            vm_push(sabit[1]);
+            _frames[uzunluk(_frames) - 1] = frame;
+        }
+        eger op == OP_TUZ  { vm_push(tuz);  _frames[uzunluk(_frames) - 1] = frame; }
+        eger op == OP_TERS { vm_push(ters); _frames[uzunluk(_frames) - 1] = frame; }
+        eger op == OP_BOS  { vm_push(bos);  _frames[uzunluk(_frames) - 1] = frame; }
+
+        eger op == OP_TANI {
+            degisken idx = frame_oku_arg(frame);
+            degisken deger = vm_pop();
+            iken uzunluk(frame[2]) <= idx { ekle(frame[2], bos); }
+            frame[2][idx] = deger;
+            _frames[uzunluk(_frames) - 1] = frame;
+        }
+        eger op == OP_YUKLE {
+            degisken idx = frame_oku_arg(frame);
+            vm_push(frame[2][idx]);
+            _frames[uzunluk(_frames) - 1] = frame;
+        }
+        eger op == OP_SAKLA {
+            degisken idx = frame_oku_arg(frame);
+            iken uzunluk(frame[2]) <= idx { ekle(frame[2], bos); }
+            frame[2][idx] = vm_peek();
+            _frames[uzunluk(_frames) - 1] = frame;
+        }
+
+        eger op == OP_TANI_GLOBAL {
+            degisken idx = frame_oku_arg(frame);
+            degisken isim = frame[0][1][idx][1];
+            degisken deger = vm_pop();
+            global_tani(isim, deger);
+            _frames[uzunluk(_frames) - 1] = frame;
+        }
+        eger op == OP_YUKLE_GLOBAL {
+            degisken idx = frame_oku_arg(frame);
+            degisken isim = frame[0][1][idx][1];
+            vm_push(global_al(isim));
+            _frames[uzunluk(_frames) - 1] = frame;
+        }
+        eger op == OP_SAKLA_GLOBAL {
+            degisken idx = frame_oku_arg(frame);
+            degisken isim = frame[0][1][idx][1];
+            global_ata(isim, vm_peek());
+            _frames[uzunluk(_frames) - 1] = frame;
+        }
+
+        eger op == OP_TOPLA {
+            degisken b = vm_pop();
+            degisken a = vm_pop();
+            vm_push(a + b);
+        }
+        eger op == OP_CIKAR {
+            degisken b = vm_pop();
+            degisken a = vm_pop();
+            vm_push(a - b);
+        }
+        eger op == OP_CARP {
+            degisken b = vm_pop();
+            degisken a = vm_pop();
+            vm_push(a * b);
+        }
+        eger op == OP_BOL {
+            degisken b = vm_pop();
+            degisken a = vm_pop();
+            vm_push(a / b);
+        }
+        eger op == OP_MOD {
+            degisken b = vm_pop();
+            degisken a = vm_pop();
+            vm_push(a % b);
+        }
+        eger op == OP_NEG { vm_push(vm_pop() * -1); }
+
+        eger op == OP_ESIT {
+            degisken b = vm_pop();
+            degisken a = vm_pop();
+            vm_push(a == b);
+        }
+        eger op == OP_ESIT_DEGIL {
+            degisken b = vm_pop();
+            degisken a = vm_pop();
+            vm_push(a != b);
+        }
+        eger op == OP_BUYUK {
+            degisken b = vm_pop();
+            degisken a = vm_pop();
+            vm_push(a > b);
+        }
+        eger op == OP_KUCUK {
+            degisken b = vm_pop();
+            degisken a = vm_pop();
+            vm_push(a < b);
+        }
+        eger op == OP_BUYUK_ESIT {
+            degisken b = vm_pop();
+            degisken a = vm_pop();
+            vm_push(a >= b);
+        }
+        eger op == OP_KUCUK_ESIT {
+            degisken b = vm_pop();
+            degisken a = vm_pop();
+            vm_push(a <= b);
+        }
+        eger op == OP_DEGIL { vm_push(degil vm_pop()); }
+
+        eger op == OP_ATLA {
+            degisken offset = frame_oku_jump(frame);
+            frame[1] = frame[1] + offset;
+            _frames[uzunluk(_frames) - 1] = frame;
+        }
+        eger op == OP_ATLA_YANLIS {
+            degisken offset = frame_oku_jump(frame);
+            degisken kosul = vm_pop();
+            eger degil kosul {
+                frame[1] = frame[1] + offset;
+            }
+            _frames[uzunluk(_frames) - 1] = frame;
+        }
+        eger op == OP_ATLA_DOGRU {
+            degisken offset = frame_oku_jump(frame);
+            degisken kosul = vm_pop();
+            eger kosul {
+                frame[1] = frame[1] + offset;
+            }
+            _frames[uzunluk(_frames) - 1] = frame;
+        }
+
+        eger op == OP_YAZ {
+            degisken argc = frame_oku_arg(frame);
+            degisken i = 0;
+            degisken ciktilar = [];
+            iken i < argc { ekle(ciktilar, vm_pop()); i = i + 1; }
+            i = argc - 1;
+            iken i >= 0 {
+                yaz ciktilar[i];
+                i = i - 1;
+            }
+            _frames[uzunluk(_frames) - 1] = frame;
+        }
+
+        eger op == OP_POP { vm_pop(); }
+
+        eger op == OP_CAGIR {
+            degisken argc = frame_oku_arg(frame);
+            _frames[uzunluk(_frames) - 1] = frame;
+            degisken arglar = [];
+            degisken ai = 0;
+            iken ai < argc {
+                ekle(arglar, vm_pop());
+                ai = ai + 1;
+            }
+            degisken fn_sabit = vm_pop();
+            // fn_sabit bir FUNC chunk olmali
+            degisken fn_chunk = fn_sabit;
+            degisken yeni_frame = frame_yeni(fn_chunk);
+            // Parametreleri locals'a yukle
+            degisken pi = 0;
+            degisken params = fn_chunk[3];
+            iken pi < uzunluk(params) {
+                degisken pidx = pi;
+                degisken pval = bos;
+                eger pi < uzunluk(arglar) {
+                    pval = arglar[uzunluk(arglar) - 1 - pi];
+                }
+                iken uzunluk(yeni_frame[2]) <= pidx { ekle(yeni_frame[2], bos); }
+                yeni_frame[2][pidx] = pval;
+                pi = pi + 1;
+            }
+            ekle(_frames, yeni_frame);
+        }
+
+        eger op == OP_DON {
+            degisken sonuc = vm_pop();
+            cikar(_frames, uzunluk(_frames) - 1);
+            vm_push(sonuc);
+        }
+        eger op == OP_DON_BOS {
+            cikar(_frames, uzunluk(_frames) - 1);
+            vm_push(bos);
+        }
+
+        eger op == OP_HALT {
+            _frames = [];
+        }
+    }
+}
+
+// ── GİRİŞ NOKTASI ──
+// compiler.zed'deki zedin_derle(kaynak, cikti) ile simetrik:
+//   zedin_derle("prog.zed", "prog.zedc");   // derle (compiler.zed)
+//   zedin_vm_calistir("prog.zedc");         // calistir (vm.zed)
+fonk zedin_vm_calistir(dosya) {
+    yaz "Yukleniyor: " + dosya;
+    degisken chunk = zedc_yukle(dosya);
+    yaz "Calistiriliyor...";
+    vm_calistir(chunk);
+    don tuz;
+}
+

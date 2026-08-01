@@ -1,0 +1,12 @@
+aktar "interpreter.zed";
+aktar "compiler.zed";
+aktar "vm.zed";
+
+yaz "=== Zedin Self-Host Test ===";
+degisken derleme_sonuc = zedin_derle("test.zed", "test.zedc");
+eger derleme_sonuc {
+    yaz "";
+    zedin_vm_calistir("test.zedc");
+} yoksa {
+    yaz "Derleme basarisiz, calistirma iptal edildi.";
+}
