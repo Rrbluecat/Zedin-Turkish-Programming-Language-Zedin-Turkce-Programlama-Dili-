@@ -117,7 +117,7 @@ enum TType {
     // Tek karakter
     T_LP, T_RP, T_LB, T_RB, T_LSQ, T_RSQ,
     T_PLUS, T_MINUS, T_STAR, T_SLASH, T_PERCENT,
-    T_SEMI, T_COMMA, T_DOT,
+    T_SEMI, T_COMMA, T_DOT, T_COLON, T_ARROW,
     // Tek veya çift karakter
     T_EQ, T_EQEQ, T_BANG, T_BANGEQ,
     T_GT, T_GTE, T_LT, T_LTE,
@@ -237,13 +237,20 @@ private:
             case '[': addToken(T_LSQ,   "["); break;
             case ']': addToken(T_RSQ,   "]"); break;
             case '+': addToken(T_PLUS,  "+"); break;
-            case '-': addToken(T_MINUS, "-"); break;
+            // T_MINUS artik -> kontroluyle birlikte ele aliniyor (asagida)
             case '*': addToken(T_STAR,  "*"); break;
             case '/': addToken(T_SLASH, "/"); break;
             case '%': addToken(T_PERCENT, "%"); break;
             case ';': addToken(T_SEMI,  ";"); break;
             case ',': addToken(T_COMMA, ","); break;
             case '.': addToken(T_DOT,   "."); break;
+            case ':': addToken(T_COLON, ":"); break;
+            case '?': addToken(T_ID, "?"); break;  // ? operatoru
+            case '-': {
+                if (match('>')) { addToken(T_ARROW, "->"); }
+                else { addToken(T_MINUS, "-"); }
+                break;
+            }
             case '=': { bool m = match('='); addToken(m ? T_EQEQ : T_EQ, m ? "==" : "="); break; }
             case '!': { bool m = match('='); addToken(m ? T_BANGEQ : T_BANG, m ? "!=" : "!"); break; }
             case '>': { bool m = match('='); addToken(m ? T_GTE : T_GT, m ? ">=" : ">"); break; }
@@ -341,6 +348,11 @@ struct UnaryExpr : Expr {
     UnaryExpr(Token o, unique_ptr<Expr> r) : op(o), right(move(r)) {}
 };
 
+struct SoruExpr : Expr {
+    unique_ptr<Expr> expr;
+    SoruExpr(unique_ptr<Expr> e) : expr(move(e)) {}
+};
+
 struct CallExpr : Expr {
     unique_ptr<Expr> callee;
     vector<unique_ptr<Expr>> args;
@@ -412,9 +424,11 @@ struct PrintStmt : Stmt {
 struct FuncDecl : Stmt {
     Token name;
     vector<Token> params;
+    vector<string> paramTypes;  // opsiyonel tip isimleri ("" = tipsiz)
+    string returnType;          // opsiyonel donus tipi ("" = tipsiz)
     unique_ptr<Stmt> body;
-    FuncDecl(Token n, vector<Token> p, unique_ptr<Stmt> b)
-        : name(n), params(move(p)), body(move(b)) {}
+    FuncDecl(Token n, vector<Token> p, vector<string> pt, string rt, unique_ptr<Stmt> b)
+        : name(n), params(move(p)), paramTypes(move(pt)), returnType(rt), body(move(b)) {}
 };
 
 struct ReturnStmt : Stmt {
@@ -470,11 +484,30 @@ public:
 // ============================================================
 struct FuncDef {
     vector<Token> params;
+    vector<string> paramTypes;
+    string returnType;
     shared_ptr<Stmt> body;
     shared_ptr<Environment> closure;
 
     FuncDef(vector<Token> p, shared_ptr<Stmt> b, shared_ptr<Environment> c)
         : params(move(p)), body(b), closure(c) {}
+
+    // Runtime tip kontrolu
+    string tipKontrol(const Val& v, const string& beklenen) const {
+        if (beklenen.empty()) return "";
+        string gelen = "";
+        switch (v.type) {
+            case V_NUM:    gelen = "sayi"; break;
+            case V_STR:    gelen = "metin"; break;
+            case V_BOOL:   gelen = "mantik"; break;
+            case V_LIST:   gelen = "liste"; break;
+            case V_FUNC:   gelen = "fonksiyon"; break;
+            case V_RESULT: gelen = "sonuc"; break;
+            default:       gelen = "bos"; break;
+        }
+        if (beklenen == gelen) return "";
+        return "Tip hatasi: '" + beklenen + "' beklendi, '" + gelen + "' geldi";
+    }
 };
 
 // Return/Break/Continue sinyalleri
@@ -1023,6 +1056,9 @@ private:
         }
         else if (auto st = dynamic_cast<FuncDecl*>(s)) {
             auto fn = make_shared<FuncDef>(st->params, shared_ptr<Stmt>(move(st->body)), env);
+            // Tip bilgilerini fonksiyon degerine ekle (runtime kontrolu icin)
+            fn->paramTypes = st->paramTypes;
+            fn->returnType = st->returnType;
             env->define(st->name.lex, Val(fn));
         }
         else if (auto st = dynamic_cast<ReturnStmt*>(s)) {
@@ -1052,6 +1088,15 @@ private:
             Val v = evaluate(ex->value.get());
             env->assign(ex->name, v);
             return v;
+        }
+
+        if (auto ex = dynamic_cast<SoruExpr*>(e)) {
+            Val result = evaluate(ex->expr.get());
+            if (result.type == V_RESULT) {
+                if (!result.result_ok) throw ReturnSignal{result};
+                return *result.result_val;
+            }
+            return result;
         }
 
         if (auto ex = dynamic_cast<UnaryExpr*>(e)) {
@@ -1170,6 +1215,15 @@ private:
                 auto callEnv = make_shared<Environment>(fn->closure);
                 for (size_t i = 0; i < fn->params.size(); ++i) {
                     Val arg = i < args.size() ? args[i] : Val();
+                    // Runtime tip kontrolu
+                    if (i < fn->paramTypes.size() && !fn->paramTypes[i].empty()) {
+                        string hata = fn->tipKontrol(arg, fn->paramTypes[i]);
+                        if (!hata.empty()) {
+                            return Val::makeResult(false, Val(
+                                fn->params[i].lex + " parametresi icin " + hata
+                            ));
+                        }
+                    }
                     callEnv->define(fn->params[i].lex, arg);
                 }
                 auto prev = env;
@@ -1178,6 +1232,15 @@ private:
                 try { execute(fn->body.get()); }
                 catch (ReturnSignal& r) { result = r.value; }
                 env = prev;
+                // Donus tipi kontrolu (sonuc tipindeyse atla - ? operatoru halleder)
+                if (!fn->returnType.empty() && result.type != V_RESULT) {
+                    string hata = fn->tipKontrol(result, fn->returnType);
+                    if (!hata.empty()) {
+                        return Val::makeResult(false, Val(
+                            fn->returnType + " donus tipi beklendi: " + hata
+                        ));
+                    }
+                }
                 return result;
             }
 
@@ -1256,14 +1319,27 @@ private:
         Token name = consume(T_ID, "Fonksiyon adı bekleniyor.");
         consume(T_LP, "'(' bekleniyor.");
         vector<Token> params;
+        vector<string> paramTypes;
         if (!check(T_RP)) {
-            do { params.push_back(consume(T_ID, "Parametre adı bekleniyor.")); }
-            while (match({T_COMMA}));
+            do {
+                params.push_back(consume(T_ID, "Parametre adı bekleniyor."));
+                // Opsiyonel tip: a: sayi
+                if (match({T_COLON})) {
+                    paramTypes.push_back(advance().lex);
+                } else {
+                    paramTypes.push_back("");
+                }
+            } while (match({T_COMMA}));
         }
         consume(T_RP, "')' bekleniyor.");
+        // Opsiyonel donus tipi: -> Sonuc
+        string returnType = "";
+        if (match({T_ARROW})) {
+            returnType = advance().lex;
+        }
         consume(T_LB, "'{' bekleniyor.");
         auto body = block();
-        return make_unique<FuncDecl>(name, move(params), move(body));
+        return make_unique<FuncDecl>(name, move(params), move(paramTypes), returnType, move(body));
     }
 
     unique_ptr<Stmt> statement() {
@@ -1415,7 +1491,11 @@ private:
     unique_ptr<Expr> call() {
         auto e = primary();
         while (true) {
-            if (match({T_LP})) {
+            if (check(T_ID) && current().lex == "?") {
+                advance();
+                e = make_unique<SoruExpr>(move(e));
+            }
+            else if (match({T_LP})) {
                 Token paren = previous();
                 vector<unique_ptr<Expr>> args;
                 if (!check(T_RP)) {

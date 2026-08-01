@@ -1,0 +1,23 @@
+fonk dosya_oku(yol: metin) -> metin {
+    degisken r = oku_dosya(yol)?;
+    don tamam(r);
+}
+
+fonk isle(yol: metin) -> sayi {
+    degisken icerik = dosya_oku(yol)?;
+    don tamam(uzunluk(icerik));
+}
+
+degisken r1 = isle("stdlib.zed");
+eger tamam_mi(r1) {
+    yaz "stdlib.zed uzunlugu: " + metine(deger_al(r1));
+} yoksa {
+    yaz "Hata: " + mesaj_al(r1);
+}
+
+degisken r2 = isle("olmayan_dosya.zed");
+eger tamam_mi(r2) {
+    yaz "Uzunluk: " + metine(deger_al(r2));
+} yoksa {
+    yaz "Hata: " + mesaj_al(r2);
+}
