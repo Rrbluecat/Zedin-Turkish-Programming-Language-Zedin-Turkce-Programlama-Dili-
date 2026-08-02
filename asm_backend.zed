@@ -8,6 +8,7 @@ degisken _degisken_satirlar = [];
 degisken _str_sayac = 0;
 degisken _degiskenler = [];
 degisken _stack_boyut = 0;
+degisken _etiket_sayac = 0;
 
 fonk asm_yaz(satir) {
     ekle(_asm_satirlar, satir);
@@ -20,6 +21,22 @@ fonk veri_yaz(satir) {
 fonk yeni_str_etiketi() {
     _str_sayac = _str_sayac + 1;
     don "_str_" + metine(_str_sayac);
+}
+
+fonk yeni_etiket() {
+    _etiket_sayac = _etiket_sayac + 1;
+    don "_L" + metine(_etiket_sayac);
+}
+
+// Karsilastirma operatoru -> ARM64 dal komutu (ters kosul)
+fonk ters_dal(op) {
+    eger op == "==" { don "b.ne"; }
+    eger op == "!=" { don "b.eq"; }
+    eger op == "<"  { don "b.ge"; }
+    eger op == ">"  { don "b.le"; }
+    eger op == "<=" { don "b.gt"; }
+    eger op == ">=" { don "b.lt"; }
+    don "b.ne";
 }
 
 fonk asm_baslik() {
@@ -96,6 +113,19 @@ fonk kodla_ifade(ifade) {
         }
         don 0;
     }
+
+    eger dt == "ATAMA" {
+        degisken hedef = ifade[1];
+        kodla_ifade(ifade[2]);
+        eger hedef[0] == "ID" {
+            degisken etiket = degisken_bul(hedef[1]);
+            eger uzunluk(etiket) > 0 {
+                asm_yaz("    adr x1, " + etiket);
+                asm_yaz("    str x0, [x1]");
+            }
+        }
+        don 0;
+    }
     eger dt == "BINOP" {
         degisken op = ifade[1];
         kodla_ifade(ifade[2]);
@@ -142,6 +172,82 @@ fonk kodla_stmt(stmt) {
         don 0;
     }
 
+    eger st == "EGER" {
+        degisken kosul = stmt[1];
+        degisken then_blok = stmt[2][1];
+        degisken else_blok = stmt[3][1];
+        degisken etiket_else = yeni_etiket();
+        degisken etiket_son = yeni_etiket();
+
+        // Kosulu hesapla (BINOP karsilastirma olmali)
+        eger kosul[0] == "BINOP" {
+            kodla_ifade(kosul[2]);
+            asm_yaz("    mov x9, x0");
+            kodla_ifade(kosul[3]);
+            asm_yaz("    cmp x9, x0");
+            asm_yaz("    " + ters_dal(kosul[1]) + " " + etiket_else);
+        } yoksa {
+            kodla_ifade(kosul);
+            asm_yaz("    cmp x0, #0");
+            asm_yaz("    b.eq " + etiket_else);
+        }
+
+        // Then blogu
+        degisken ti = 0;
+        iken ti < uzunluk(then_blok) {
+            kodla_stmt(then_blok[ti]);
+            ti = ti + 1;
+        }
+        asm_yaz("    b " + etiket_son);
+
+        // Else blogu
+        asm_yaz(etiket_else + ":");
+        degisken ei = 0;
+        iken ei < uzunluk(else_blok) {
+            kodla_stmt(else_blok[ei]);
+            ei = ei + 1;
+        }
+        asm_yaz(etiket_son + ":");
+        don 0;
+    }
+
+    eger st == "IKEN" {
+        degisken dongu_bas = yeni_etiket();
+        degisken dongu_son = yeni_etiket();
+        degisken kosul = stmt[1];
+        degisken govde = stmt[2][1];
+
+        asm_yaz(dongu_bas + ":");
+
+        // Kosul kontrolu
+        eger kosul[0] == "BINOP" {
+            kodla_ifade(kosul[2]);
+            asm_yaz("    mov x9, x0");
+            kodla_ifade(kosul[3]);
+            asm_yaz("    cmp x9, x0");
+            asm_yaz("    " + ters_dal(kosul[1]) + " " + dongu_son);
+        } yoksa {
+            kodla_ifade(kosul);
+            asm_yaz("    cmp x0, #0");
+            asm_yaz("    b.eq " + dongu_son);
+        }
+
+        // Govde
+        degisken gi = 0;
+        iken gi < uzunluk(govde) {
+            kodla_stmt(govde[gi]);
+            gi = gi + 1;
+        }
+        asm_yaz("    b " + dongu_bas);
+        asm_yaz(dongu_son + ":");
+        don 0;
+    }
+
+    eger st == "IFADE" {
+        kodla_ifade(stmt[1]);
+        don 0;
+    }
+
     don 0;
 }
 
@@ -150,6 +256,7 @@ fonk asm_uret(ast) {
     _veri_satirlar = [];
     _degisken_satirlar = [];
     _str_sayac = 0;
+    _etiket_sayac = 0;
 
     asm_baslik();
 

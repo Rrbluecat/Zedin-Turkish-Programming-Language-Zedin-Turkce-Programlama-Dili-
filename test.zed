@@ -1,6 +1,15 @@
 degisken x = 10;
-degisken y = 20;
-degisken z = x + y;
-yaz "Toplam:";
-yaz z;
-yaz x * y;
+degisken i = 0;
+degisken toplam = 0;
+
+eger x > 5 {
+    yaz "x buyuk";
+} yoksa {
+    yaz "x kucuk";
+}
+
+iken i < 5 {
+    toplam = toplam + i;
+    i = i + 1;
+}
+yaz toplam;
