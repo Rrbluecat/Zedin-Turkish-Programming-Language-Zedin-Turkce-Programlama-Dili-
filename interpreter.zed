@@ -254,6 +254,13 @@ fonk parse_stmt() {
         }
         p_esles("RP");
         degisken donus_tipi = "";
+        eger p_tip() == "OP" ve p_deger() == "-" {
+            p_ilerle();
+            eger p_tip() == "OP" ve p_deger() == ">" {
+                p_ilerle();
+                donus_tipi = p_esles("ID");
+            }
+        }
         don ["FONK", isim, params, parse_blok(), param_tipleri, donus_tipi];
     }
     eger p_kw("kir")   { p_ilerle(); p_esles("SC"); don ["KIR"]; }

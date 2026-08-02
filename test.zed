@@ -1,4 +1,5 @@
-fonk selam(isim: metin) {
-    yaz "Merhaba " + isim;
+fonk kare(x: sayi) -> sayi {
+    don x * x;
 }
-selam("Zedin");
+yaz kare(5);
+yaz kare("yanlis");

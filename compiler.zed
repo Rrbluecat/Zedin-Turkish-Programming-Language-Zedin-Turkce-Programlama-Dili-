@@ -155,6 +155,8 @@ fonk tip_kontrol_ifade(dugum, hatalar) {
                 }
             }
         }
+        // Fonksiyon donus tipini don (imza varsa)
+        eger imza != bos { don imza[2]; }
         don "";
     }
 
