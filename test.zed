@@ -1,2 +1,6 @@
-yaz "Merhaba Zedin!";
-yaz "Native compilation calisiyor!";
+degisken x = 10;
+degisken y = 20;
+degisken z = x + y;
+yaz "Toplam:";
+yaz z;
+yaz x * y;

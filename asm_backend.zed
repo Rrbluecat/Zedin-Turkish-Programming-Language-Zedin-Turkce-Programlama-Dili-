@@ -4,7 +4,10 @@
 
 degisken _asm_satirlar = [];
 degisken _veri_satirlar = [];
+degisken _degisken_satirlar = [];
 degisken _str_sayac = 0;
+degisken _degiskenler = [];
+degisken _stack_boyut = 0;
 
 fonk asm_yaz(satir) {
     ekle(_asm_satirlar, satir);
@@ -20,6 +23,8 @@ fonk yeni_str_etiketi() {
 }
 
 fonk asm_baslik() {
+    _degiskenler = [];
+    _stack_boyut = 0;
     asm_yaz(".section .text");
     asm_yaz(".global main");
     asm_yaz("main:");
@@ -32,10 +37,17 @@ fonk asm_son() {
     asm_yaz("    ldp x29, x30, [sp], #16");
     asm_yaz("    ret");
     veri_yaz(".section .data");
+    // Once degiskenler
+    degisken di = 0;
+    iken di < uzunluk(_degisken_satirlar) {
+        veri_yaz(_degisken_satirlar[di]);
+        di = di + 1;
+    }
+    veri_yaz("_fmt_sayi: .byte 37, 100, 10, 0");
 }
 
 fonk asm_str_tanimla(etiket, deger) {
-    veri_yaz(etiket + ": .asciz \"" + deger + "\"");
+    ekle(_degisken_satirlar, etiket + ": .asciz \"" + deger + "\"");
 }
 
 fonk asm_puts(etiket) {
@@ -43,9 +55,75 @@ fonk asm_puts(etiket) {
     asm_yaz("    bl puts");
 }
 
+// Degisken bul: etiket adi don
+fonk degisken_bul(isim) {
+    degisken i = 0;
+    iken i < uzunluk(_degiskenler) {
+        eger _degiskenler[i][0] == isim { don _degiskenler[i][1]; }
+        i = i + 1;
+    }
+    don "";
+}
+
+// Degisken ekle, .data etiketi don
+fonk degisken_ekle(isim) {
+    degisken etiket = "_var_" + isim;
+    ekle(_degiskenler, [isim, etiket]);
+    ekle(_degisken_satirlar, etiket + ": .quad 0");
+    don etiket;
+}
+
+// Ifadeyi x0 registerina yukle
+fonk kodla_ifade(ifade) {
+    eger ifade == bos { asm_yaz("    mov x0, #0"); don 0; }
+    degisken dt = ifade[0];
+
+    eger dt == "SAYI" {
+        asm_yaz("    mov x0, #" + ifade[1]);
+        don 0;
+    }
+    eger dt == "STR" {
+        degisken etiket = yeni_str_etiketi();
+        asm_str_tanimla(etiket, ifade[1]);
+        asm_yaz("    adr x0, " + etiket);
+        don 0;
+    }
+    eger dt == "ID" {
+        degisken etiket = degisken_bul(ifade[1]);
+        eger uzunluk(etiket) > 0 {
+            asm_yaz("    adr x1, " + etiket);
+            asm_yaz("    ldr x0, [x1]");
+        }
+        don 0;
+    }
+    eger dt == "BINOP" {
+        degisken op = ifade[1];
+        kodla_ifade(ifade[2]);
+        asm_yaz("    mov x9, x0");
+        kodla_ifade(ifade[3]);
+        asm_yaz("    mov x10, x0");
+        asm_yaz("    mov x0, x9");
+        eger op == "+" { asm_yaz("    add x0, x0, x10"); }
+        eger op == "-" { asm_yaz("    sub x0, x0, x10"); }
+        eger op == "*" { asm_yaz("    mul x0, x0, x10"); }
+        eger op == "/" { asm_yaz("    sdiv x0, x0, x10"); }
+        don 0;
+    }
+    don 0;
+}
+
 fonk kodla_stmt(stmt) {
     eger stmt == bos { don 0; }
     degisken st = stmt[0];
+
+    eger st == "DEGISKEN" {
+        degisken isim = stmt[1];
+        degisken etiket = degisken_ekle(isim);
+        kodla_ifade(stmt[2]);
+        asm_yaz("    adr x1, " + etiket);
+        asm_yaz("    str x0, [x1]");
+        don 0;
+    }
 
     eger st == "YAZ" {
         degisken ifade = stmt[1];
@@ -53,12 +131,14 @@ fonk kodla_stmt(stmt) {
             degisken etiket = yeni_str_etiketi();
             asm_str_tanimla(etiket, ifade[1]);
             asm_puts(etiket);
+        } yoksa {
+            // Sayi veya degisken: printf ile yaz
+            kodla_ifade(ifade);
+            asm_yaz("    mov x19, x0");
+            asm_yaz("    adr x0, _fmt_sayi");
+            asm_yaz("    mov x1, x19");
+            asm_yaz("    bl printf");
         }
-        don 0;
-    }
-
-    eger st == "FONK" {
-        // Ileride eklenecek
         don 0;
     }
 
@@ -68,6 +148,7 @@ fonk kodla_stmt(stmt) {
 fonk asm_uret(ast) {
     _asm_satirlar = [];
     _veri_satirlar = [];
+    _degisken_satirlar = [];
     _str_sayac = 0;
 
     asm_baslik();
