@@ -1,5 +1,2 @@
-fonk kare(x: sayi) -> sayi {
-    don x * x;
-}
-yaz kare(5);
-yaz kare("yanlis");
+yaz "Merhaba Zedin!";
+yaz "Native compilation calisiyor!";

@@ -1,0 +1,4 @@
+aktar "interpreter.zed";
+aktar "asm_backend.zed";
+
+zedin_asm_derle("test.zed", "test_cikti.s");

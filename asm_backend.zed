@@ -1,0 +1,127 @@
+// ============================================================
+// asm_backend.zed - Zedin AST -> ARM64 Assembly
+// ============================================================
+
+degisken _asm_satirlar = [];
+degisken _veri_satirlar = [];
+degisken _str_sayac = 0;
+
+fonk asm_yaz(satir) {
+    ekle(_asm_satirlar, satir);
+}
+
+fonk veri_yaz(satir) {
+    ekle(_veri_satirlar, satir);
+}
+
+fonk yeni_str_etiketi() {
+    _str_sayac = _str_sayac + 1;
+    don "_str_" + metine(_str_sayac);
+}
+
+fonk asm_baslik() {
+    asm_yaz(".section .text");
+    asm_yaz(".global main");
+    asm_yaz("main:");
+    asm_yaz("    stp x29, x30, [sp, #-16]!");
+    asm_yaz("    mov x29, sp");
+}
+
+fonk asm_son() {
+    asm_yaz("    mov x0, #0");
+    asm_yaz("    ldp x29, x30, [sp], #16");
+    asm_yaz("    ret");
+    veri_yaz(".section .data");
+}
+
+fonk asm_str_tanimla(etiket, deger) {
+    veri_yaz(etiket + ": .asciz \"" + deger + "\"");
+}
+
+fonk asm_puts(etiket) {
+    asm_yaz("    adr x0, " + etiket);
+    asm_yaz("    bl puts");
+}
+
+fonk kodla_stmt(stmt) {
+    eger stmt == bos { don 0; }
+    degisken st = stmt[0];
+
+    eger st == "YAZ" {
+        degisken ifade = stmt[1];
+        eger ifade[0] == "STR" {
+            degisken etiket = yeni_str_etiketi();
+            asm_str_tanimla(etiket, ifade[1]);
+            asm_puts(etiket);
+        }
+        don 0;
+    }
+
+    eger st == "FONK" {
+        // Ileride eklenecek
+        don 0;
+    }
+
+    don 0;
+}
+
+fonk asm_uret(ast) {
+    _asm_satirlar = [];
+    _veri_satirlar = [];
+    _str_sayac = 0;
+
+    asm_baslik();
+
+    degisken i = 0;
+    iken i < uzunluk(ast) {
+        kodla_stmt(ast[i]);
+        i = i + 1;
+    }
+
+    asm_son();
+
+    // Tum satirlari birlestir
+    degisken sonuc = [];
+    degisken ai = 0;
+    iken ai < uzunluk(_asm_satirlar) {
+        ekle(sonuc, _asm_satirlar[ai]);
+        ai = ai + 1;
+    }
+    degisken vi = 0;
+    iken vi < uzunluk(_veri_satirlar) {
+        ekle(sonuc, _veri_satirlar[vi]);
+        vi = vi + 1;
+    }
+    don sonuc;
+}
+
+fonk zedin_asm_derle(kaynak_dosya, cikti_dosya) {
+    yaz "Okunuyor: " + kaynak_dosya;
+    degisken icerik_sonuc = oku_dosya(kaynak_dosya);
+    eger hata_mi(icerik_sonuc) {
+        yaz "Hata: " + mesaj_al(icerik_sonuc);
+        don ters;
+    }
+    degisken kaynak = deger_al(icerik_sonuc);
+    yaz "Taranıyor...";
+    degisken tokenlar = tara(kaynak);
+    yaz "Parse ediliyor...";
+    degisken ast = parse(tokenlar);
+    yaz "ARM64 Assembly uretiliyor...";
+    degisken satirlar = asm_uret(ast);
+
+    // .s dosyasina yaz
+    byte_dosya_temizle(cikti_dosya);
+    degisken si = 0;
+    iken si < uzunluk(satirlar) {
+        degisken satir = satirlar[si] + "\n";
+        degisken ci = 0;
+        iken ci < uzunluk(satir) {
+            byte_yaz(cikti_dosya, char_kodu(satir[ci]));
+            ci = ci + 1;
+        }
+        si = si + 1;
+    }
+    yaz "Assembly dosyasi olusturuldu: " + cikti_dosya;
+    don tuz;
+}
