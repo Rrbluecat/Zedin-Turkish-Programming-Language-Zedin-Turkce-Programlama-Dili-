@@ -1,15 +1,19 @@
-degisken x = 10;
-degisken i = 0;
-degisken toplam = 0;
-
-eger x > 5 {
-    yaz "x buyuk";
-} yoksa {
-    yaz "x kucuk";
+fonk kare(x) {
+    don x * x;
 }
 
-iken i < 5 {
-    toplam = toplam + i;
+fonk topla(a, b) {
+    don a + b;
+}
+
+degisken r1 = kare(5);
+yaz r1;
+degisken r2 = topla(3, 4);
+yaz r2;
+degisken i = 1;
+degisken toplam = 0;
+iken i <= 5 {
+    toplam = toplam + kare(i);
     i = i + 1;
 }
 yaz toplam;

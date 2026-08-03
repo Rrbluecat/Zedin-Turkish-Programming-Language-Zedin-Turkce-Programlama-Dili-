@@ -9,6 +9,7 @@ degisken _str_sayac = 0;
 degisken _degiskenler = [];
 degisken _stack_boyut = 0;
 degisken _etiket_sayac = 0;
+degisken _fonk_satirlar = [];
 
 fonk asm_yaz(satir) {
     ekle(_asm_satirlar, satir);
@@ -53,6 +54,12 @@ fonk asm_son() {
     asm_yaz("    mov x0, #0");
     asm_yaz("    ldp x29, x30, [sp], #16");
     asm_yaz("    ret");
+    // Fonksiyon tanimlarini main'den sonra ekle
+    degisken fi = 0;
+    iken fi < uzunluk(_fonk_satirlar) {
+        asm_yaz(_fonk_satirlar[fi]);
+        fi = fi + 1;
+    }
     veri_yaz(".section .data");
     // Once degiskenler
     degisken di = 0;
@@ -114,6 +121,28 @@ fonk kodla_ifade(ifade) {
         don 0;
     }
 
+    eger dt == "CAGRI" {
+        degisken fn_isim = ifade[1];
+        degisken fn_arglar = ifade[2];
+        // Argumanlari once x19,x20,x21'e hesapla (callee-saved), sonra x0,x1,x2'ye koy
+        degisken ai = 0;
+        iken ai < uzunluk(fn_arglar) {
+            kodla_ifade(fn_arglar[ai]);
+            asm_yaz("    mov x" + metine(ai + 19) + ", x0");
+            ai = ai + 1;
+        }
+        ai = 0;
+        iken ai < uzunluk(fn_arglar) {
+            asm_yaz("    mov x" + metine(ai) + ", x" + metine(ai + 19));
+            ai = ai + 1;
+        }
+        // x22/x23 kaydet, fonksiyon bozabilir
+        asm_yaz("    stp x22, x23, [sp, #-16]!");
+        asm_yaz("    bl " + fn_isim);
+        asm_yaz("    ldp x22, x23, [sp], #16");
+        don 0;
+    }
+
     eger dt == "ATAMA" {
         degisken hedef = ifade[1];
         kodla_ifade(ifade[2]);
@@ -129,14 +158,14 @@ fonk kodla_ifade(ifade) {
     eger dt == "BINOP" {
         degisken op = ifade[1];
         kodla_ifade(ifade[2]);
-        asm_yaz("    mov x9, x0");
+        asm_yaz("    mov x22, x0");
         kodla_ifade(ifade[3]);
-        asm_yaz("    mov x10, x0");
-        asm_yaz("    mov x0, x9");
-        eger op == "+" { asm_yaz("    add x0, x0, x10"); }
-        eger op == "-" { asm_yaz("    sub x0, x0, x10"); }
-        eger op == "*" { asm_yaz("    mul x0, x0, x10"); }
-        eger op == "/" { asm_yaz("    sdiv x0, x0, x10"); }
+        asm_yaz("    mov x23, x0");
+        asm_yaz("    mov x0, x22");
+        eger op == "+" { asm_yaz("    add x0, x0, x23"); }
+        eger op == "-" { asm_yaz("    sub x0, x0, x23"); }
+        eger op == "*" { asm_yaz("    mul x0, x0, x23"); }
+        eger op == "/" { asm_yaz("    sdiv x0, x0, x23"); }
         don 0;
     }
     don 0;
@@ -182,9 +211,9 @@ fonk kodla_stmt(stmt) {
         // Kosulu hesapla (BINOP karsilastirma olmali)
         eger kosul[0] == "BINOP" {
             kodla_ifade(kosul[2]);
-            asm_yaz("    mov x9, x0");
+            asm_yaz("    mov x22, x0");
             kodla_ifade(kosul[3]);
-            asm_yaz("    cmp x9, x0");
+            asm_yaz("    cmp x22, x0");
             asm_yaz("    " + ters_dal(kosul[1]) + " " + etiket_else);
         } yoksa {
             kodla_ifade(kosul);
@@ -222,9 +251,9 @@ fonk kodla_stmt(stmt) {
         // Kosul kontrolu
         eger kosul[0] == "BINOP" {
             kodla_ifade(kosul[2]);
-            asm_yaz("    mov x9, x0");
+            asm_yaz("    mov x22, x0");
             kodla_ifade(kosul[3]);
-            asm_yaz("    cmp x9, x0");
+            asm_yaz("    cmp x22, x0");
             asm_yaz("    " + ters_dal(kosul[1]) + " " + dongu_son);
         } yoksa {
             kodla_ifade(kosul);
@@ -248,6 +277,48 @@ fonk kodla_stmt(stmt) {
         don 0;
     }
 
+    eger st == "FONK" {
+        degisken fn_isim = stmt[1];
+        degisken fn_params = stmt[2];
+        degisken fn_govde = stmt[3][1];
+        // Fonksiyon satirlarini gecici listeye topla
+        degisken eski_asm = _asm_satirlar;
+        _asm_satirlar = [];
+        asm_yaz("");
+        asm_yaz(fn_isim + ":");
+        asm_yaz("    stp x29, x30, [sp, #-64]!");
+        asm_yaz("    mov x29, sp");
+        degisken pi = 0;
+        iken pi < uzunluk(fn_params) {
+            degisken param_etiket = degisken_ekle(fn_params[pi]);
+            asm_yaz("    adr x9, " + param_etiket);
+            asm_yaz("    str x" + metine(pi) + ", [x9]");
+            pi = pi + 1;
+        }
+        degisken gi = 0;
+        iken gi < uzunluk(fn_govde) {
+            kodla_stmt(fn_govde[gi]);
+            gi = gi + 1;
+        }
+        asm_yaz("    ldp x29, x30, [sp], #64");
+        asm_yaz("    ret");
+        // Fonksiyon satirlarini _fonk_satirlar'a tasI
+        degisken fsi = 0;
+        iken fsi < uzunluk(_asm_satirlar) {
+            ekle(_fonk_satirlar, _asm_satirlar[fsi]);
+            fsi = fsi + 1;
+        }
+        _asm_satirlar = eski_asm;
+        don 0;
+    }
+
+    eger st == "DON" {
+        kodla_ifade(stmt[1]);
+        asm_yaz("    ldp x29, x30, [sp], #64");
+        asm_yaz("    ret");
+        don 0;
+    }
+
     don 0;
 }
 
@@ -255,6 +326,7 @@ fonk asm_uret(ast) {
     _asm_satirlar = [];
     _veri_satirlar = [];
     _degisken_satirlar = [];
+    _fonk_satirlar = [];
     _str_sayac = 0;
     _etiket_sayac = 0;
 
