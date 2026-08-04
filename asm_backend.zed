@@ -68,6 +68,9 @@ fonk asm_son() {
         di = di + 1;
     }
     veri_yaz("_fmt_sayi: .byte 37, 100, 10, 0");
+    veri_yaz("_fmt_str_sayi: .byte 37, 115, 37, 100, 10, 0");
+    veri_yaz("_fmt_str_str: .byte 37, 115, 37, 115, 10, 0");
+    veri_yaz("_buf: .space 256");
 }
 
 fonk asm_str_tanimla(etiket, deger) {
@@ -89,12 +92,26 @@ fonk degisken_bul(isim) {
     don "";
 }
 
+// Degisken tipini bul
+fonk degisken_tip_bul(isim) {
+    degisken i = 0;
+    iken i < uzunluk(_degiskenler) {
+        eger _degiskenler[i][0] == isim { don _degiskenler[i][2]; }
+        i = i + 1;
+    }
+    don "sayi";
+}
+
 // Degisken ekle, .data etiketi don
-fonk degisken_ekle(isim) {
+fonk degisken_ekle_tipli(isim, veri_tipi) {
     degisken etiket = "_var_" + isim;
-    ekle(_degiskenler, [isim, etiket]);
+    ekle(_degiskenler, [isim, etiket, veri_tipi]);
     ekle(_degisken_satirlar, etiket + ": .quad 0");
     don etiket;
+}
+
+fonk degisken_ekle(isim) {
+    don degisken_ekle_tipli(isim, "sayi");
 }
 
 // Ifadeyi x0 registerina yukle
@@ -103,7 +120,15 @@ fonk kodla_ifade(ifade) {
     degisken dt = ifade[0];
 
     eger dt == "SAYI" {
-        asm_yaz("    mov x0, #" + ifade[1]);
+        degisken sayi_val = sayiya(ifade[1]);
+        eger sayi_val >= 0 ve sayi_val <= 65535 {
+            asm_yaz("    mov x0, #" + ifade[1]);
+        } yoksa {
+            degisken lo = metine(bit_ve(sayi_val, 65535));
+            degisken hi = metine(bit_ve(bit_kaydir_sag(sayi_val, 16), 65535));
+            asm_yaz("    movz x0, #" + lo);
+            asm_yaz("    movk x0, #" + hi + ", lsl #16");
+        }
         don 0;
     }
     eger dt == "STR" {
@@ -177,7 +202,11 @@ fonk kodla_stmt(stmt) {
 
     eger st == "DEGISKEN" {
         degisken isim = stmt[1];
-        degisken etiket = degisken_ekle(isim);
+        degisken ifade_tipi = "sayi";
+        eger uzunluk(stmt) > 2 ve stmt[2] != bos {
+            eger stmt[2][0] == "STR" { ifade_tipi = "metin"; }
+        }
+        degisken etiket = degisken_ekle_tipli(isim, ifade_tipi);
         kodla_ifade(stmt[2]);
         asm_yaz("    adr x1, " + etiket);
         asm_yaz("    str x0, [x1]");
@@ -191,12 +220,86 @@ fonk kodla_stmt(stmt) {
             asm_str_tanimla(etiket, ifade[1]);
             asm_puts(etiket);
         } yoksa {
-            // Sayi veya degisken: printf ile yaz
-            kodla_ifade(ifade);
-            asm_yaz("    mov x19, x0");
-            asm_yaz("    adr x0, _fmt_sayi");
-            asm_yaz("    mov x1, x19");
-            asm_yaz("    bl printf");
+            eger ifade[0] == "ID" {
+                degisken var_tipi = degisken_tip_bul(ifade[1]);
+                eger var_tipi == "metin" {
+                    degisken var_etiket = degisken_bul(ifade[1]);
+                    asm_yaz("    adr x1, " + var_etiket);
+                    asm_yaz("    ldr x0, [x1]");
+                    asm_yaz("    bl puts");
+                } yoksa {
+                    kodla_ifade(ifade);
+                    asm_yaz("    mov x19, x0");
+                    asm_yaz("    adr x0, _fmt_sayi");
+                    asm_yaz("    mov x1, x19");
+                    asm_yaz("    bl printf");
+                }
+            } yoksa {
+                eger ifade[0] == "BINOP" ve ifade[1] == "+" {
+                    // String birlestirme: sol + sag
+                    degisken sol = ifade[2];
+                    degisken sag = ifade[3];
+                    // Sol tarafi x19'a yukle
+                    eger sol[0] == "STR" {
+                        degisken se = yeni_str_etiketi();
+                        asm_str_tanimla(se, sol[1]);
+                        asm_yaz("    adr x19, " + se);
+                    } yoksa {
+                        eger sol[0] == "ID" {
+                            degisken sol_etiket = degisken_bul(sol[1]);
+                            asm_yaz("    adr x1, " + sol_etiket);
+                            asm_yaz("    ldr x19, [x1]");
+                        } yoksa {
+                            kodla_ifade(sol);
+                            asm_yaz("    mov x19, x0");
+                        }
+                    }
+                    // Sag tarafi x20'ye yukle
+                    eger sag[0] == "STR" {
+                        degisken se2 = yeni_str_etiketi();
+                        asm_str_tanimla(se2, sag[1]);
+                        asm_yaz("    adr x20, " + se2);
+                        // str+str: printf ile yaz
+                        asm_yaz("    adr x0, _fmt_str_str");
+                        asm_yaz("    mov x1, x19");
+                        asm_yaz("    mov x2, x20");
+                        asm_yaz("    bl printf");
+                    } yoksa {
+                        eger sag[0] == "ID" {
+                            degisken var_tipi2 = degisken_tip_bul(sag[1]);
+                            eger var_tipi2 == "metin" {
+                                degisken sag_etiket = degisken_bul(sag[1]);
+                                asm_yaz("    adr x1, " + sag_etiket);
+                                asm_yaz("    ldr x20, [x1]");
+                                asm_yaz("    adr x0, _fmt_str_str");
+                                asm_yaz("    mov x1, x19");
+                                asm_yaz("    mov x2, x20");
+                                asm_yaz("    bl printf");
+                            } yoksa {
+                                kodla_ifade(sag);
+                                asm_yaz("    mov x20, x0");
+                                asm_yaz("    adr x0, _fmt_str_sayi");
+                                asm_yaz("    mov x1, x19");
+                                asm_yaz("    mov x2, x20");
+                                asm_yaz("    bl printf");
+                            }
+                        } yoksa {
+                            kodla_ifade(sag);
+                            asm_yaz("    mov x20, x0");
+                            asm_yaz("    adr x0, _fmt_str_sayi");
+                            asm_yaz("    mov x1, x19");
+                            asm_yaz("    mov x2, x20");
+                            asm_yaz("    bl printf");
+                        }
+                    }
+                } yoksa {
+                    kodla_ifade(ifade);
+                    asm_yaz("    mov x19, x0");
+                    asm_yaz("    adr x0, _fmt_sayi");
+                    asm_yaz("    mov x1, x19");
+                    asm_yaz("    bl printf");
+                }
+            }
         }
         don 0;
     }

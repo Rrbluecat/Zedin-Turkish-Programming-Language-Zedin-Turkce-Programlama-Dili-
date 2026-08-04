@@ -1,19 +1,4 @@
-fonk kare(x) {
-    don x * x;
-}
-
-fonk topla(a, b) {
-    don a + b;
-}
-
-degisken r1 = kare(5);
-yaz r1;
-degisken r2 = topla(3, 4);
-yaz r2;
-degisken i = 1;
-degisken toplam = 0;
-iken i <= 5 {
-    toplam = toplam + kare(i);
-    i = i + 1;
-}
-yaz toplam;
+degisken isim = "Zedin";
+degisken versiyon = 4;
+yaz "Dil: " + isim;
+yaz "Versiyon: " + versiyon;
