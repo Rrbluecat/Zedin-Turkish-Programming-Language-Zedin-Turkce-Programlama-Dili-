@@ -9,6 +9,9 @@ degisken _str_sayac = 0;
 degisken _degiskenler = [];
 degisken _stack_boyut = 0;
 degisken _etiket_sayac = 0;
+degisken _yerel_mod = ters;
+degisken _yerel_degiskenler = [];
+degisken _yerel_offset = 0;
 degisken _fonk_satirlar = [];
 
 fonk asm_yaz(satir) {
@@ -84,12 +87,24 @@ fonk asm_puts(etiket) {
 
 // Degisken bul: etiket adi don
 fonk degisken_bul(isim) {
+    eger _yerel_mod {
+        degisken yoff = yerel_bul(isim);
+        eger yoff >= 0 { don "__yerel_" + metine(yoff) + "__"; }
+    }
     degisken i = 0;
     iken i < uzunluk(_degiskenler) {
         eger _degiskenler[i][0] == isim { don _degiskenler[i][1]; }
         i = i + 1;
     }
     don "";
+}
+
+fonk degisken_tip_bul_tam(isim) {
+    eger _yerel_mod {
+        degisken yt = yerel_tip_bul(isim);
+        eger yt != "sayi" veya yerel_bul(isim) >= 0 { don yt; }
+    }
+    don degisken_tip_bul(isim);
 }
 
 // Degisken tipini bul
@@ -104,6 +119,11 @@ fonk degisken_tip_bul(isim) {
 
 // Degisken ekle, .data etiketi don
 fonk degisken_ekle_tipli(isim, veri_tipi) {
+    eger _yerel_mod {
+        _yerel_offset = _yerel_offset + 8;
+        ekle(_yerel_degiskenler, [isim, _yerel_offset, veri_tipi]);
+        don "__yerel__";
+    }
     degisken etiket = "_var_" + isim;
     ekle(_degiskenler, [isim, etiket, veri_tipi]);
     ekle(_degisken_satirlar, etiket + ": .quad 0");
@@ -112,6 +132,24 @@ fonk degisken_ekle_tipli(isim, veri_tipi) {
 
 fonk degisken_ekle(isim) {
     don degisken_ekle_tipli(isim, "sayi");
+}
+
+fonk yerel_bul(isim) {
+    degisken i = uzunluk(_yerel_degiskenler) - 1;
+    iken i >= 0 {
+        eger _yerel_degiskenler[i][0] == isim { don _yerel_degiskenler[i][1]; }
+        i = i - 1;
+    }
+    don -1;
+}
+
+fonk yerel_tip_bul(isim) {
+    degisken i = uzunluk(_yerel_degiskenler) - 1;
+    iken i >= 0 {
+        eger _yerel_degiskenler[i][0] == isim { don _yerel_degiskenler[i][2]; }
+        i = i - 1;
+    }
+    don "sayi";
 }
 
 // Ifadeyi x0 registerina yukle
@@ -140,8 +178,19 @@ fonk kodla_ifade(ifade) {
     eger dt == "ID" {
         degisken etiket = degisken_bul(ifade[1]);
         eger uzunluk(etiket) > 0 {
-            asm_yaz("    adr x1, " + etiket);
-            asm_yaz("    ldr x0, [x1]");
+            eger etiket[0] == "_" ve uzunluk(etiket) > 8 ve etiket[1] == "_" {
+                // Yerel degisken: stack offseti cikart
+                degisken off_str = "";
+                degisken oi = 8;
+                iken oi < uzunluk(etiket) ve etiket[oi] != "_" {
+                    off_str = off_str + etiket[oi];
+                    oi = oi + 1;
+                }
+                asm_yaz("    ldr x0, [x29, #-" + off_str + "]");
+            } yoksa {
+                asm_yaz("    adr x1, " + etiket);
+                asm_yaz("    ldr x0, [x1]");
+            }
         }
         don 0;
     }
@@ -174,8 +223,18 @@ fonk kodla_ifade(ifade) {
         eger hedef[0] == "ID" {
             degisken etiket = degisken_bul(hedef[1]);
             eger uzunluk(etiket) > 0 {
-                asm_yaz("    adr x1, " + etiket);
-                asm_yaz("    str x0, [x1]");
+                eger etiket[0] == "_" ve uzunluk(etiket) > 8 ve etiket[1] == "_" {
+                    degisken off_str = "";
+                    degisken oi = 8;
+                    iken oi < uzunluk(etiket) ve etiket[oi] != "_" {
+                        off_str = off_str + etiket[oi];
+                        oi = oi + 1;
+                    }
+                    asm_yaz("    str x0, [x29, #-" + off_str + "]");
+                } yoksa {
+                    asm_yaz("    adr x1, " + etiket);
+                    asm_yaz("    str x0, [x1]");
+                }
             }
         }
         don 0;
@@ -208,8 +267,12 @@ fonk kodla_stmt(stmt) {
         }
         degisken etiket = degisken_ekle_tipli(isim, ifade_tipi);
         kodla_ifade(stmt[2]);
-        asm_yaz("    adr x1, " + etiket);
-        asm_yaz("    str x0, [x1]");
+        eger etiket == "__yerel__" {
+            asm_yaz("    str x0, [x29, #-" + metine(_yerel_offset) + "]");
+        } yoksa {
+            asm_yaz("    adr x1, " + etiket);
+            asm_yaz("    str x0, [x1]");
+        }
         don 0;
     }
 
@@ -384,40 +447,67 @@ fonk kodla_stmt(stmt) {
         degisken fn_isim = stmt[1];
         degisken fn_params = stmt[2];
         degisken fn_govde = stmt[3][1];
-        // Fonksiyon satirlarini gecici listeye topla
         degisken eski_asm = _asm_satirlar;
+        degisken eski_yerel = _yerel_degiskenler;
+        degisken eski_offset = _yerel_offset;
         _asm_satirlar = [];
-        asm_yaz("");
-        asm_yaz(fn_isim + ":");
-        asm_yaz("    stp x29, x30, [sp, #-64]!");
-        asm_yaz("    mov x29, sp");
+        _yerel_mod = tuz;
+        _yerel_degiskenler = [];
+        _yerel_offset = 0;
+        // Parametreleri yerel degisken olarak kaydet
         degisken pi = 0;
         iken pi < uzunluk(fn_params) {
-            degisken param_etiket = degisken_ekle(fn_params[pi]);
-            asm_yaz("    adr x9, " + param_etiket);
-            asm_yaz("    str x" + metine(pi) + ", [x9]");
+            _yerel_offset = _yerel_offset + 8;
+            ekle(_yerel_degiskenler, [fn_params[pi], _yerel_offset, "sayi"]);
             pi = pi + 1;
         }
+        // Once govdeyi derle (yerel offset'i bulmak icin)
+        degisken govde_asm = [];
         degisken gi = 0;
         iken gi < uzunluk(fn_govde) {
             kodla_stmt(fn_govde[gi]);
             gi = gi + 1;
         }
-        asm_yaz("    ldp x29, x30, [sp], #64");
+        // Stack boyutunu 16'ya hizala
+        degisken frame_boyut = (_yerel_offset + 15) - ((_yerel_offset + 15) % 16) + 16;
+        // Sonra baslik ekle
+        degisken govde_satirlar = _asm_satirlar;
+        _asm_satirlar = [];
+        asm_yaz("");
+        asm_yaz(fn_isim + ":");
+        asm_yaz("    stp x29, x30, [sp, #-" + metine(frame_boyut) + "]!");
+        asm_yaz("    mov x29, sp");
+        // Parametreleri stack'e yaz
+        pi = 0;
+        iken pi < uzunluk(fn_params) {
+            asm_yaz("    str x" + metine(pi) + ", [x29, #-" + metine((pi + 1) * 8) + "]");
+            pi = pi + 1;
+        }
+        // Govde satirlarini ekle
+        degisken gsi = 0;
+        iken gsi < uzunluk(govde_satirlar) {
+            asm_yaz(govde_satirlar[gsi]);
+            gsi = gsi + 1;
+        }
+        asm_yaz("    ldp x29, x30, [sp], #" + metine(frame_boyut));
         asm_yaz("    ret");
-        // Fonksiyon satirlarini _fonk_satirlar'a tasI
         degisken fsi = 0;
         iken fsi < uzunluk(_asm_satirlar) {
             ekle(_fonk_satirlar, _asm_satirlar[fsi]);
             fsi = fsi + 1;
         }
         _asm_satirlar = eski_asm;
+        _yerel_mod = ters;
+        _yerel_degiskenler = eski_yerel;
+        _yerel_offset = eski_offset;
         don 0;
     }
 
     eger st == "DON" {
+        degisken eski_offset2 = _yerel_offset;
+        degisken frame_boyut2 = (eski_offset2 + 15) - ((eski_offset2 + 15) % 16) + 16;
         kodla_ifade(stmt[1]);
-        asm_yaz("    ldp x29, x30, [sp], #64");
+        asm_yaz("    ldp x29, x30, [sp], #" + metine(frame_boyut2));
         asm_yaz("    ret");
         don 0;
     }
@@ -432,6 +522,9 @@ fonk asm_uret(ast) {
     _fonk_satirlar = [];
     _str_sayac = 0;
     _etiket_sayac = 0;
+    _yerel_mod = ters;
+    _yerel_degiskenler = [];
+    _yerel_offset = 0;
 
     asm_baslik();
 

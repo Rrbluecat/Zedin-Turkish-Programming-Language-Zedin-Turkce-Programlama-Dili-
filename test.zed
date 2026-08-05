@@ -1,4 +1,13 @@
-degisken isim = "Zedin";
-degisken versiyon = 4;
-yaz "Dil: " + isim;
-yaz "Versiyon: " + versiyon;
+fonk kare(x) {
+    don x * x;
+}
+
+fonk faktoriyel(n) {
+    eger n <= 1 {
+        don 1;
+    }
+    don n * faktoriyel(n - 1);
+}
+
+yaz kare(5);
+yaz faktoriyel(6);
