@@ -1,13 +1,5 @@
-fonk kare(x) {
-    don x * x;
+fonk topla(a, b) {
+    don a + b;
 }
-
-fonk faktoriyel(n) {
-    eger n <= 1 {
-        don 1;
-    }
-    don n * faktoriyel(n - 1);
-}
-
-yaz kare(5);
-yaz faktoriyel(6);
+yaz topla(3, 4) * 2;
+yaz topla(10, 5);

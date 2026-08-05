@@ -3,21 +3,32 @@
 main:
     stp x29, x30, [sp, #-16]!
     mov x29, sp
-    mov x0, #5
+    mov x0, #3
     mov x19, x0
+    mov x0, #4
+    mov x20, x0
     mov x0, x19
+    mov x1, x20
     stp x22, x23, [sp, #-16]!
-    bl kare
+    bl topla
     ldp x22, x23, [sp], #16
+    mov x22, x0
+    mov x0, #2
+    mov x23, x0
+    mov x0, x22
+    mul x0, x0, x23
     mov x19, x0
     adr x0, _fmt_sayi
     mov x1, x19
     bl printf
-    mov x0, #6
+    mov x0, #10
     mov x19, x0
+    mov x0, #5
+    mov x20, x0
     mov x0, x19
+    mov x1, x20
     stp x22, x23, [sp, #-16]!
-    bl faktoriyel
+    bl topla
     ldp x22, x23, [sp], #16
     mov x19, x0
     adr x0, _fmt_sayi
@@ -27,52 +38,17 @@ main:
     ldp x29, x30, [sp], #16
     ret
 
-kare:
+topla:
     stp x29, x30, [sp, #-32]!
     mov x29, sp
     str x0, [x29, #-8]
+    str x1, [x29, #-16]
     ldr x0, [x29, #-8]
     mov x22, x0
-    ldr x0, [x29, #-8]
+    ldr x0, [x29, #-16]
     mov x23, x0
     mov x0, x22
-    mul x0, x0, x23
-    ldp x29, x30, [sp], #32
-    ret
-    ldp x29, x30, [sp], #32
-    ret
-
-faktoriyel:
-    stp x29, x30, [sp, #-32]!
-    mov x29, sp
-    str x0, [x29, #-8]
-    ldr x0, [x29, #-8]
-    mov x22, x0
-    mov x0, #1
-    cmp x22, x0
-    b.gt _L1
-    mov x0, #1
-    ldp x29, x30, [sp], #32
-    ret
-    b _L2
-_L1:
-_L2:
-    ldr x0, [x29, #-8]
-    mov x22, x0
-    ldr x0, [x29, #-8]
-    mov x22, x0
-    mov x0, #1
-    mov x23, x0
-    mov x0, x22
-    sub x0, x0, x23
-    mov x19, x0
-    mov x0, x19
-    stp x22, x23, [sp, #-16]!
-    bl faktoriyel
-    ldp x22, x23, [sp], #16
-    mov x23, x0
-    mov x0, x22
-    mul x0, x0, x23
+    add x0, x0, x23
     ldp x29, x30, [sp], #32
     ret
     ldp x29, x30, [sp], #32
