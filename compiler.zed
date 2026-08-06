@@ -70,8 +70,20 @@ fonk tip_kontrol_stmt(stmt, hatalar) {
         don 0;
     }
 
-    eger st == "IFADE" veya st == "DEGISKEN" {
+    eger st == "DEGISKEN" {
         tip_kontrol_ifade(stmt[1], hatalar);
+        don 0;
+    }
+
+    eger st == "IFADE" {
+        degisken ifade = stmt[1];
+        tip_kontrol_ifade(ifade, hatalar);
+        eger ifade[0] == "CAGRI" {
+            degisken imza = imza_bul(ifade[1]);
+            eger imza != bos ve imza[2] == "sonuc" {
+                ekle(hatalar, ifade[1] + "(): Sonuc ele alinmadi - ? veya tamam_mi() kullanin");
+            }
+        }
         don 0;
     }
 
@@ -131,7 +143,7 @@ fonk tip_kontrol_ifade(dugum, hatalar) {
 
         // Imza var mi?
         degisken imza = imza_bul(isim);
-        eger imza != bos {
+        eger imza != bos ve uzunluk(imza) > 1 {
             degisken param_tipleri = imza[1];
             // Arguman sayisi kontrolu
             eger uzunluk(arglar) != uzunluk(param_tipleri) {
@@ -156,7 +168,7 @@ fonk tip_kontrol_ifade(dugum, hatalar) {
             }
         }
         // Fonksiyon donus tipini don (imza varsa)
-        eger imza != bos { don imza[2]; }
+        eger imza != bos ve uzunluk(imza) > 2 { don imza[2]; }
         don "";
     }
 
@@ -197,7 +209,27 @@ fonk tip_kontrol(ast) {
             }
             degisken fn_donus = "";
             eger uzunluk(ast[i]) > 5 { fn_donus = ast[i][5]; }
-            imza_ekle(ast[i][1], fn_param_tipleri, fn_donus);
+            // Govdede don hata/tamam varsa donus tipi "sonuc"
+        eger fn_donus == "" {
+            degisken govde_str = metine(ast[i][3]);
+            eger metine(ast[i][3]) == metine(ast[i][3]) {
+                degisken gi2 = 0;
+                eger uzunluk(ast[i]) <= 3 veya ast[i][3] == bos { gi2 = 999999; devam; }
+                degisken fn_stmtler = ast[i][3][1];
+                iken gi2 < uzunluk(fn_stmtler) {
+                    degisken fs = fn_stmtler[gi2];
+                    eger fs[0] == "DON" {
+                        eger fs[1][0] == "CAGRI" {
+                            eger fs[1][1] == "hata" veya fs[1][1] == "tamam" {
+                                fn_donus = "sonuc";
+                            }
+                        }
+                    }
+                    gi2 = gi2 + 1;
+                }
+            }
+        }
+        imza_ekle(ast[i][1], fn_param_tipleri, fn_donus);
         }
         i = i + 1;
     }

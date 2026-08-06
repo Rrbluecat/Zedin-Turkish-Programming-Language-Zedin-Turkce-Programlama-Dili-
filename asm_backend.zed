@@ -217,6 +217,26 @@ fonk kodla_ifade(ifade) {
         don 0;
     }
 
+    eger dt == "LISTE" {
+        degisken elemanlar = ifade[1];
+        degisken liste_etiket = yeni_str_etiketi();
+        degisken li = 0;
+        iken li < uzunluk(elemanlar) {
+            ekle(_degisken_satirlar, liste_etiket + "_" + metine(li) + ": .quad 0");
+            li = li + 1;
+        }
+        ekle(_degisken_satirlar, liste_etiket + "_len: .quad " + metine(uzunluk(elemanlar)));
+        li = 0;
+        iken li < uzunluk(elemanlar) {
+            kodla_ifade(elemanlar[li]);
+            asm_yaz("    adr x1, " + liste_etiket + "_" + metine(li));
+            asm_yaz("    str x0, [x1]");
+            li = li + 1;
+        }
+        asm_yaz("    adr x0, " + liste_etiket + "_0");
+        don 0;
+    }
+
     eger dt == "ATAMA" {
         degisken hedef = ifade[1];
         kodla_ifade(ifade[2]);
