@@ -1,3 +1,0 @@
-degisken x = 10;
-degisken y = 20;
-yaz x + y;

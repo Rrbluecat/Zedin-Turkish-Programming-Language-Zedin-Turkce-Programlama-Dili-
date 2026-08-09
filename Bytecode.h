@@ -82,6 +82,7 @@ enum class OpCode : uint8_t {
     OP_POP,         // stack'ten at
     OP_KOPYALA,     // stack'in tepesini kopyala
     OP_HALT,        // program sonu
+    OP_SORU,        // ? operatoru: Result kontrol
 };
 
 // ============================================================
@@ -811,6 +812,20 @@ public:
 
                 case OpCode::OP_POP:    pop(); break;
                 case OpCode::OP_KOPYALA: push(peek(0)); break;
+                case OpCode::OP_SORU: {
+                    BVal sonuc = pop();
+                    if (sonuc.type == BVal::RESULT) {
+                        if (!sonuc.result_ok) {
+                            frames.pop_back();
+                            push(sonuc);
+                        } else {
+                            push(*sonuc.result_val);
+                        }
+                    } else {
+                        push(sonuc);
+                    }
+                    break;
+                }
                 case OpCode::OP_HALT:   return stack.empty() ? BVal() : pop();
 
                 case OpCode::OP_YUKLE_GLOBAL: {

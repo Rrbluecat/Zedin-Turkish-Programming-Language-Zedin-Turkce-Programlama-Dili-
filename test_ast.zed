@@ -1,6 +1,0 @@
-aktar "interpreter.zed";
-degisken kod = "yaz selam(\"Zedin\");";
-degisken tok = tara(kod);
-degisken ast = parse(tok);
-yaz metine(ast[0]);
-yaz metine(ast[0][1]);

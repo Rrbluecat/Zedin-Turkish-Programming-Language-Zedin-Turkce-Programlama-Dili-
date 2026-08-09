@@ -13,7 +13,7 @@
 // --- Yardimci fonksiyonlar ---
 
 fonk harf_mi(k) {
-    // Latin harfler + alt cizgi
+    // Latin harfler + alt cizgi + Turkce unicode karakterler
     don (k == "_" veya
          k == "a" veya k == "b" veya k == "c" veya k == "d" veya
          k == "e" veya k == "f" veya k == "g" veya k == "h" veya
@@ -29,19 +29,9 @@ fonk harf_mi(k) {
          k == "Q" veya k == "R" veya k == "S" veya k == "T" veya
          k == "U" veya k == "V" veya k == "W" veya k == "X" veya
          k == "Y" veya k == "Z" veya
-         // Turkce kucuk harfler
-         k == "g" veya k == "s" veya k == "i" veya
-         k == "o" veya k == "u" veya k == "c" veya
-         // Turkce buyuk harfler
-         k == "G" veya k == "S" veya k == "I" veya
-         k == "O" veya k == "U" veya k == "C");
-=======
-         k == "M" veya k == "N" veya k == "O" veya k == "P" veya k == "Q" veya
-         k == "R" veya k == "S" veya k == "T" veya k == "U" veya
-         k == "V" veya k == "X" veya k == "Y" veya k == "Z" veya k == "_" veya
+         // Turkce unicode karakterler
          k == "ğ" veya k == "ü" veya k == "ş" veya k == "ı" veya k == "ö" veya k == "ç" veya
          k == "Ğ" veya k == "Ü" veya k == "Ş" veya k == "İ" veya k == "Ö" veya k == "Ç");
->>>>>>> 41fd7c8 (Büyük self host başarımıyla Zedin aylar sonra karşınızda)
 }
 
 fonk rakam_mi(k) {
@@ -421,6 +411,6 @@ fonk lexer_test() {
         j = j + 1;
     }
 }
-degisken test_kodu = "degisken x = 10;";
-degisken sonuc = tara(test_kodu);
-yaz sonuc; 
+// degisken test_kodu = "degisken x = 10;";
+// degisken sonuc = tara(test_kodu);
+// yaz sonuc; 

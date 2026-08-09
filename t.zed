@@ -1,1 +1,0 @@
-calistir_kod("global_ata(\"_t\", []); global_ekle(\"_t\", 99); yaz global_getir(\"_t\");");

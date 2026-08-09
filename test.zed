@@ -1,7 +1,0 @@
-fonk guvenli_bol(a: sayi, b: sayi) {
-    eger b == 0 { don hata("sifira bolme"); }
-    don tamam(a / b);
-}
-
-degisken r = guvenli_bol(10, 2)?;
-yaz r;

@@ -466,6 +466,14 @@ public:
             "  degisken " + name.lex + " = 0;");
     }
 
+    // Token gerektirmeyen, bulunamazsa exception atmayan versiyon (VM koprusu icin)
+    bool getByName(const string& n, Val& out) {
+        auto it = values.find(n);
+        if (it != values.end()) { out = it->second; return true; }
+        if (parent) return parent->getByName(n, out);
+        return false;
+    }
+
     void assign(const Token& name, Val val) {
         auto it = values.find(name.lex);
         if (it != values.end()) { it->second = val; return; }
@@ -907,6 +915,22 @@ private:
         // --- SONUC (Result) sistemi ---
 
         // tamam(deger) → Ok sonucu oluştur
+        globals->define("native_cagir", Val::makeNative([](vector<Val> args) -> Val {
+            if (args.size() < 1 || args[0].type != V_STR) return Val();
+            string isim = args[0].str;
+            vector<Val> callArgs;
+            if (args.size() >= 2 && args[1].type == V_LIST && args[1].list) {
+                callArgs = args[1].list->elements;
+            }
+            if (_global_interp) {
+                Val fn;
+                if (_global_interp->globals->getByName(isim, fn) && fn.type == V_FUNC && fn.native) {
+                    return fn.native(callArgs);
+                }
+            }
+            return Val::makeResult(false, Val(string("Tanimsiz native: " + isim)));
+        }));
+
         globals->define("tamam", Val::makeNative([](vector<Val> args) -> Val {
             Val inner = args.empty() ? Val() : args[0];
             return Val::makeResult(true, inner);

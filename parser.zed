@@ -53,8 +53,6 @@ fonk p_kontrol2(tip, deger) {
 // IFADE PARSER (Oncelik Siralari - Asagi = Dusuk Oncelik)
 // ============================================================
 
-fonk parse_ifade();    // ileri bildirim icin - asagida tanimlanir
-
 // --- 7. Seviye: Birincil (en yuksek oncelik) ---
 fonk parse_birincil() {
     // Sayi literali
@@ -279,8 +277,6 @@ fonk parse_ifade() {
 // ============================================================
 // STATEMENT PARSER
 // ============================================================
-
-fonk parse_blok();  // ileri bildirim
 
 fonk parse_stmt() {
 
@@ -563,47 +559,47 @@ fonk zedin_parse(kaynak_kodu) {
 // ============================================================
 // TEST
 // ============================================================
-yaz "=== Zedin Self-hosting Parser v2 ===";
-yaz "";
+// yaz "=== Zedin Self-hosting Parser v2 ===";
+// yaz "";
 
-// Test 1: Temel degisken
-yaz "--- TEST 1: degisken bildirimi ---";
-ast_yaz(zedin_parse("degisken x = 42;"), "");
-yaz "";
+// // Test 1: Temel degisken
+// yaz "--- TEST 1: degisken bildirimi ---";
+// ast_yaz(zedin_parse("degisken x = 42;"), "");
+// yaz "";
 
-// Test 2: Aritmetik
-yaz "--- TEST 2: aritmetik ifade ---";
-ast_yaz(zedin_parse("degisken y = x + 5 * 2;"), "");
-yaz "";
+// // Test 2: Aritmetik
+// yaz "--- TEST 2: aritmetik ifade ---";
+// ast_yaz(zedin_parse("degisken y = x + 5 * 2;"), "");
+// yaz "";
 
-// Test 3: eger/yoksa
-yaz "--- TEST 3: eger/yoksa ---";
-ast_yaz(zedin_parse("eger x > 10 { yaz x; } yoksa { yaz 0; }"), "");
-yaz "";
+// // Test 3: eger/yoksa
+// yaz "--- TEST 3: eger/yoksa ---";
+// ast_yaz(zedin_parse("eger x > 10 { yaz x; } yoksa { yaz 0; }"), "");
+// yaz "";
 
-// Test 4: iken dongusu
-yaz "--- TEST 4: iken dongusu ---";
-ast_yaz(zedin_parse("iken x > 0 { x = x - 1; }"), "");
-yaz "";
+// // Test 4: iken dongusu
+// yaz "--- TEST 4: iken dongusu ---";
+// ast_yaz(zedin_parse("iken x > 0 { x = x - 1; }"), "");
+// yaz "";
 
-// Test 5: fonksiyon tanimi ve cagrisi
-yaz "--- TEST 5: fonksiyon ---";
-ast_yaz(zedin_parse("fonk topla(a, b) { don a + b; } degisken z = topla(3, 4);"), "");
-yaz "";
+// // Test 5: fonksiyon tanimi ve cagrisi
+// yaz "--- TEST 5: fonksiyon ---";
+// ast_yaz(zedin_parse("fonk topla(a, b) { don a + b; } degisken z = topla(3, 4);"), "");
+// yaz "";
 
-// Test 6: Liste
-yaz "--- TEST 6: liste literali ---";
-ast_yaz(zedin_parse("degisken liste = [1, 2, 3];"), "");
-yaz "";
+// // Test 6: Liste
+// yaz "--- TEST 6: liste literali ---";
+// ast_yaz(zedin_parse("degisken liste = [1, 2, 3];"), "");
+// yaz "";
 
-// Test 7: Mantik operatorler
-yaz "--- TEST 7: ve/veya ---";
-ast_yaz(zedin_parse("eger x > 0 ve x < 100 { yaz tuz; }"), "");
-yaz "";
+// // Test 7: Mantik operatorler
+// yaz "--- TEST 7: ve/veya ---";
+// ast_yaz(zedin_parse("eger x > 0 ve x < 100 { yaz tuz; }"), "");
+// yaz "";
 
-// Test 8: Index erisimi
-yaz "--- TEST 8: index erisimi ---";
-ast_yaz(zedin_parse("degisken ilk = liste[0];"), "");
-yaz "";
+// // Test 8: Index erisimi
+// yaz "--- TEST 8: index erisimi ---";
+// ast_yaz(zedin_parse("degisken ilk = liste[0];"), "");
+// yaz "";
 
-yaz "=== Parser testleri tamamlandi ===";
+// yaz "=== Parser testleri tamamlandi ===";

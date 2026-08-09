@@ -1,6 +1,0 @@
-fonk liste_ekle(lst, deger) {
-    ekle(lst, deger);
-}
-degisken l = [];
-liste_ekle(l, 42);
-yaz uzunluk(l);

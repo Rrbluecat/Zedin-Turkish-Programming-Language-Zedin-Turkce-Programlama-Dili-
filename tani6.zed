@@ -1,6 +1,0 @@
-global_ata("x", 42);
-yaz global_getir("x");
-global_ata("x", 99);
-yaz global_getir("x");
-yaz global_varmi("x");
-yaz global_varmi("y");

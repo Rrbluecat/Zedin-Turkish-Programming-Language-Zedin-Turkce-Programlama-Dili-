@@ -1,5 +1,0 @@
-degisken i = 0;
-iken i < 5 {
-    yaz i;
-    i = i + 1;
-}

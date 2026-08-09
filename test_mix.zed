@@ -1,4 +1,0 @@
-degisken x = 42;
-yaz "Sayi:";
-yaz x;
-yaz "Bitti!";

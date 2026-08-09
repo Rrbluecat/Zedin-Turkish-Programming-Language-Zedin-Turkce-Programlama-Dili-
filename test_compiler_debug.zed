@@ -1,7 +1,0 @@
-aktar "interpreter.zed";
-aktar "compiler.zed";
-
-degisken test_ch = chunk_yeni("test");
-chunk_degisken_ekle(test_ch, "isim");
-yaz "Degiskenler: " + metine(uzunluk(chunk_degiskenler(test_ch)));
-yaz "Bul isim: " + metine(chunk_degisken_bul(test_ch, "isim"));

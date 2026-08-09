@@ -286,6 +286,7 @@ degisken OP_YAZ         = 37;
 degisken OP_POP         = 38;
 degisken OP_KOPYALA     = 39;
 degisken OP_HALT        = 40;
+degisken OP_SORU        = 45;
 
 // ── CHUNK YAPISI ──
 // Her chunk bir liste: [kod, sabitler, degiskenler, params, isim]
@@ -454,9 +455,9 @@ fonk derle_ifade(ch, dugum) {
         chunk_yaz_op_arg(ch, OP_CAGIR, uzunluk(dugum[2]));
         don 0;
     }
+    eger tip == "SORU_OP" { derle_ifade(ch, dugum[1]); chunk_yaz_op(ch, OP_SORU); don 0; }
     don 0;
 }
-
 // ── STATEMENT DERLEME ──
 fonk derle_stmt(ch, stmt) {
     eger stmt == bos { don 0; }

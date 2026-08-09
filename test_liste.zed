@@ -1,0 +1,9 @@
+degisken liste = [10, 20, 30];
+degisken i = 0;
+iken i < 3 {
+    yaz liste[i];
+    i = i + 1;
+}
+liste[1] = 99;
+yaz liste[1];
+yaz uzunluk(liste);

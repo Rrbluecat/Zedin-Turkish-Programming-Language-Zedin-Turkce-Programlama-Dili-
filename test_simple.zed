@@ -1,4 +1,0 @@
-fonk selam(isim) {
-    don isim;
-}
-yaz selam("Zedin");

@@ -43,6 +43,7 @@ degisken OP_YAZ         = 37;
 degisken OP_POP         = 38;
 degisken OP_KOPYALA     = 39;
 degisken OP_HALT        = 40;
+degisken OP_SORU        = 45;
 
 // ── .zedc DOSYA OKUYUCU ──
 
@@ -168,8 +169,7 @@ fonk global_al(isim) {
         eger _globals[i][0] == isim { don _globals[i][1]; }
         i = i - 1;
     }
-    yaz "Tanimsiz global: " + isim;
-    don bos;
+    don ["__native__", isim];
 }
 fonk global_ata(isim, deger) {
     degisken i = uzunluk(_globals) - 1;
@@ -392,6 +392,17 @@ fonk vm_calistir(chunk) {
                 ai = ai + 1;
             }
             degisken fn_sabit = vm_pop();
+
+            eger tip(fn_sabit) == "liste" ve uzunluk(fn_sabit) == 2 ve fn_sabit[0] == "__native__" {
+                // ters sirada toplanmisti, native_cagir icin normal siraya cevir
+                degisken duz_arglar = [];
+                degisken ni = uzunluk(arglar) - 1;
+                iken ni >= 0 { ekle(duz_arglar, arglar[ni]); ni = ni - 1; }
+                degisken sonuc = native_cagir(fn_sabit[1], duz_arglar);
+                vm_push(sonuc);
+                devam;
+            }
+
             // fn_sabit bir FUNC chunk olmali
             degisken fn_chunk = fn_sabit;
             degisken yeni_frame = frame_yeni(fn_chunk);
@@ -423,6 +434,19 @@ fonk vm_calistir(chunk) {
 
         eger op == OP_HALT {
             _frames = [];
+        }
+        eger op == OP_SORU {
+            degisken sonuc = vm_pop();
+            eger tip(sonuc) == "sonuc" {
+                eger hata_mi(sonuc) {
+                    cikar(_frames, uzunluk(_frames) - 1);
+                    vm_push(sonuc);
+                } yoksa {
+                    vm_push(deger_al(sonuc));
+                }
+            } yoksa {
+                vm_push(sonuc);
+            }
         }
     }
 }

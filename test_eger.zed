@@ -1,4 +1,0 @@
-degisken x = 10;
-eger x > 5 {
-    yaz x;
-}

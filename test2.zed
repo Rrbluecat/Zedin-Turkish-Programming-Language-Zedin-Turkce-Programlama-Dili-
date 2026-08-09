@@ -1,4 +1,0 @@
-degisken a = 10;
-degisken b = 32;
-degisken toplam = a + b;
-yaz toplam;
