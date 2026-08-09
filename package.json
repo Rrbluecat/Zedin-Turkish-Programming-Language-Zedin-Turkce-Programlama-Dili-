@@ -1,0 +1,32 @@
+{
+  "name": "zedin-language",
+  "displayName": "Zedin Dil Desteği",
+  "description": "Zedin programlama dili için sözdizimi renklendirme desteği",
+  "version": "0.1.0",
+  "publisher": "zedin-lang",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "icon": "icon.png",
+  "contributes": {
+    "languages": [
+      {
+        "id": "zedin",
+        "aliases": ["Zedin", "zedin"],
+        "extensions": [".zed"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "zedin",
+        "scopeName": "source.zedin",
+        "path": "./syntaxes/zedin.tmLanguage.json"
+      }
+    ]
+  }
+}
+
