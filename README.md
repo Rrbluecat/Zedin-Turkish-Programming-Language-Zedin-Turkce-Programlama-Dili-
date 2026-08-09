@@ -3,6 +3,20 @@
 
 **Türkçe keywordlü, bytecode VM'li, self-hosting programlama dili**
 
+
+
+![Dil](https://img.shields.io/badge/dil-Zedin-blueviolet)
+
+
+
+![Platform](https://img.shields.io/badge/platform-Termux%20%7C%20Linux-informational)
+
+
+
+![Self--hosting](https://img.shields.io/badge/self--hosting-%25100-success)
+
+
+
 > 10. sınıf öğrencisi tarafından sıfırdan geliştirildi. Termux'ta. Telefondan.
 
 ---
