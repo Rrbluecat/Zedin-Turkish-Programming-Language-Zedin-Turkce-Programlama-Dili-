@@ -49,6 +49,7 @@ Dosya uzantısı: `.zed`
 | 🛡️ Rust-tipi Hata Yönetimi | ✅ | `Sonuc<T>` (tamam/hata) + `?` operatörü ile hata yayılımı |
 | 🔍 Derleme Zamanı Tip Kontrolü | ✅ %100 | Argüman sayısı, literal tip, zorunlu hata ele alma |
 | 🚀 Native ARM64 Compilation | ✅ | `.zed` → ARM64 assembly → native binary, C(O2) ile karşılaştırılabilir hız |
+| 📋 Native Liste Desteği | ✅ | ARM64'te index okuma/yazma + `uzunluk()`, ardışık bellek bloğu ile |
 | 📚 Stdlib | ✅ | `parcala`, `icerir`, `kirp`, `sirala`, `toplam` ve daha fazlası |
 | 🖥️ ODY | ✅ | Oku-Değerlendir-Yaz etkileşimli ortam |
 | 🔧 C Transpiler | ✅ | Zedin → C → native binary |
@@ -187,6 +188,12 @@ Zedin kodu doğrudan ARM64 assembly'ye derlenip native binary üretilebiliyor (`
 
 Desteklenenler: değişkenler, aritmetik işlemler, döngüler, koşullar, fonksiyonlar (recursive dahil), string işlemleri ve string birleştirme.
 
+Ayrıca listeler artık native destekleniyor: `liste[i]` ile okuma/yazma ve `uzunluk(liste)` çalışıyor (sabit boyutlu, derleme-zamanında bilinen listeler).
+
+\`\`\`bash
+# (native ARM64 derleme akışı için ilgili giris_asm.zed kullanılır)
+\`\`\`
+
 ```bash
 # (native ARM64 derleme akışı için ilgili giris_asm.zed kullanılır)
 ```
@@ -307,8 +314,8 @@ sayi_mi(metin)               # "123" → true
 - [x] **Rust-tipi Sonuc<T> ve `?` operatörü** (hata yayılımı)
 - [x] **Derleme zamanı tip kontrolü** (argüman sayısı, literal tip, zorunlu hata ele alma)
 - [x] **Native ARM64 backend** (değişken, döngü, koşul, fonksiyon, recursive, string desteği)
+- [x] **Liste native desteği** (ARM64'te ardışık .quad bloğu, index okuma/yazma, uzunluk())
 - [x] Türkçe Yazılım Terimleri Sözlüğü
-- [ ] Liste native desteği (ARM64'te statik dizi ile)
 - [ ] VS Code sözdizimi desteği
 - [ ] Tam self-compiling (Zedin → Zedin binary, C++ olmadan)
 
