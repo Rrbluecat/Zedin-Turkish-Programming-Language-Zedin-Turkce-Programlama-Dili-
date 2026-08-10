@@ -1,0 +1,16 @@
+degisken isim = "eger";
+eger isim == "eger" {
+    yaz "eslesti";
+} yoksa {
+    yaz "eslesmedi";
+}
+
+degisken sayac = 0;
+degisken kelime = "abc";
+iken kelime != "xyz" {
+    sayac = sayac + 1;
+    eger sayac > 2 {
+        kelime = "xyz";
+    }
+}
+yaz sayac;

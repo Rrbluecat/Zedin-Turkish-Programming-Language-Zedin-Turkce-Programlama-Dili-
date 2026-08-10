@@ -1,0 +1,3 @@
+aktar "interpreter.zed";
+aktar "asm_backend.zed";
+zedin_asm_derle("test_strcmp.zed", "test_strcmp.s");

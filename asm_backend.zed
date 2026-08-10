@@ -33,6 +33,16 @@ fonk yeni_etiket() {
 }
 
 // Karsilastirma operatoru -> ARM64 dal komutu (ters kosul)
+fonk ifade_metin_mi(ifade) {
+    eger ifade == bos { don ters; }
+    eger ifade[0] == "STR" { don tuz; }
+    eger ifade[0] == "ID" {
+        degisken t = degisken_tip_bul_tam(ifade[1]);
+        eger t == "metin" { don tuz; }
+    }
+    don ters;
+}
+
 fonk ters_dal(op) {
     eger op == "==" { don "b.ne"; }
     eger op == "!=" { don "b.eq"; }
@@ -242,6 +252,94 @@ fonk kodla_ifade(ifade) {
                 }
             }
         }
+
+        eger fn_isim == "oku_dosya" ve uzunluk(fn_arglar) == 1 {
+            // Dosyayi tamamen oku, buffer adresini x0'da dondur (basarisizsa x0=0)
+            degisken mod_etiket = yeni_str_etiketi();
+            asm_str_tanimla(mod_etiket, "r");
+            kodla_ifade(fn_arglar[0]);
+            asm_yaz("    mov x19, x0");
+            asm_yaz("    adr x1, " + mod_etiket);
+            asm_yaz("    bl fopen");
+            asm_yaz("    mov x20, x0");
+            degisken hata_et = yeni_etiket();
+            degisken bitis_et = yeni_etiket();
+            asm_yaz("    cmp x20, #0");
+            asm_yaz("    b.eq " + hata_et);
+            // fseek(f, 0, SEEK_END=2)
+            asm_yaz("    mov x0, x20");
+            asm_yaz("    mov x1, #0");
+            asm_yaz("    mov x2, #2");
+            asm_yaz("    bl fseek");
+            // ftell(f) -> boyut
+            asm_yaz("    mov x0, x20");
+            asm_yaz("    bl ftell");
+            asm_yaz("    mov x21, x0");
+            // fseek(f, 0, SEEK_SET=0)
+            asm_yaz("    mov x0, x20");
+            asm_yaz("    mov x1, #0");
+            asm_yaz("    mov x2, #0");
+            asm_yaz("    bl fseek");
+            // malloc(boyut + 1)
+            asm_yaz("    mov x0, x21");
+            asm_yaz("    add x0, x0, #1");
+            asm_yaz("    bl malloc");
+            asm_yaz("    mov x22, x0");
+            // fread(buf, 1, boyut, f)
+            asm_yaz("    mov x1, #1");
+            asm_yaz("    mov x2, x21");
+            asm_yaz("    mov x3, x20");
+            asm_yaz("    bl fread");
+            // null-terminator: buf[boyut] = 0
+            asm_yaz("    mov x0, x22");
+            asm_yaz("    add x0, x0, x21");
+            asm_yaz("    mov w1, #0");
+            asm_yaz("    strb w1, [x0]");
+            // fclose(f)
+            asm_yaz("    mov x0, x20");
+            asm_yaz("    bl fclose");
+            asm_yaz("    mov x0, x22");
+            asm_yaz("    b " + bitis_et);
+            asm_yaz(hata_et + ":");
+            asm_yaz("    mov x0, #0");
+            asm_yaz(bitis_et + ":");
+            don 0;
+        }
+
+        eger fn_isim == "byte_dosya_temizle" ve uzunluk(fn_arglar) == 1 {
+            degisken mod_etiket2 = yeni_str_etiketi();
+            asm_str_tanimla(mod_etiket2, "w");
+            kodla_ifade(fn_arglar[0]);
+            asm_yaz("    mov x19, x0");
+            asm_yaz("    adr x1, " + mod_etiket2);
+            asm_yaz("    bl fopen");
+            asm_yaz("    cmp x0, #0");
+            degisken skip_et = yeni_etiket();
+            asm_yaz("    b.eq " + skip_et);
+            asm_yaz("    bl fclose");
+            asm_yaz(skip_et + ":");
+            don 0;
+        }
+
+        eger fn_isim == "byte_yaz" ve uzunluk(fn_arglar) == 2 {
+            degisken mod_etiket3 = yeni_str_etiketi();
+            asm_str_tanimla(mod_etiket3, "ab");
+            kodla_ifade(fn_arglar[0]);
+            asm_yaz("    mov x19, x0");
+            kodla_ifade(fn_arglar[1]);
+            asm_yaz("    mov x20, x0");
+            asm_yaz("    mov x0, x19");
+            asm_yaz("    adr x1, " + mod_etiket3);
+            asm_yaz("    bl fopen");
+            asm_yaz("    cmp x0, #0");
+            degisken skip_et2 = yeni_etiket();
+            asm_yaz("    b.eq " + skip_et2);
+            asm_yaz("    mov x1, x20");
+            asm_yaz("    bl fputc");
+            asm_yaz(skip_et2 + ":");
+            don 0;
+        }
+
         // Argumanlari once x19,x20,x21'e hesapla (callee-saved), sonra x0,x1,x2'ye koy
         degisken ai = 0;
         iken ai < uzunluk(fn_arglar) {
@@ -503,7 +601,20 @@ fonk kodla_stmt(stmt) {
         degisken etiket_son = yeni_etiket();
 
         // Kosulu hesapla (BINOP karsilastirma olmali)
-        eger kosul[0] == "BINOP" {
+        eger kosul[0] == "BINOP" ve (ifade_metin_mi(kosul[2]) veya ifade_metin_mi(kosul[3])) ve (kosul[1] == "==" veya kosul[1] == "!=") {
+            kodla_ifade(kosul[2]);
+            asm_yaz("    mov x19, x0");
+            kodla_ifade(kosul[3]);
+            asm_yaz("    mov x1, x0");
+            asm_yaz("    mov x0, x19");
+            asm_yaz("    bl strcmp");
+            asm_yaz("    cmp x0, #0");
+            eger kosul[1] == "==" {
+                asm_yaz("    b.ne " + etiket_else);
+            } yoksa {
+                asm_yaz("    b.eq " + etiket_else);
+            }
+        } yoksa eger kosul[0] == "BINOP" {
             kodla_ifade(kosul[2]);
             asm_yaz("    mov x22, x0");
             kodla_ifade(kosul[3]);
@@ -543,7 +654,20 @@ fonk kodla_stmt(stmt) {
         asm_yaz(dongu_bas + ":");
 
         // Kosul kontrolu
-        eger kosul[0] == "BINOP" {
+        eger kosul[0] == "BINOP" ve (ifade_metin_mi(kosul[2]) veya ifade_metin_mi(kosul[3])) ve (kosul[1] == "==" veya kosul[1] == "!=") {
+            kodla_ifade(kosul[2]);
+            asm_yaz("    mov x19, x0");
+            kodla_ifade(kosul[3]);
+            asm_yaz("    mov x1, x0");
+            asm_yaz("    mov x0, x19");
+            asm_yaz("    bl strcmp");
+            asm_yaz("    cmp x0, #0");
+            eger kosul[1] == "==" {
+                asm_yaz("    b.ne " + dongu_son);
+            } yoksa {
+                asm_yaz("    b.eq " + dongu_son);
+            }
+        } yoksa eger kosul[0] == "BINOP" {
             kodla_ifade(kosul[2]);
             asm_yaz("    mov x22, x0");
             kodla_ifade(kosul[3]);

@@ -1,0 +1,3 @@
+aktar "interpreter.zed";
+aktar "asm_backend.zed";
+zedin_asm_derle("test_dosyaio.zed", "test_dosyaio.s");
