@@ -1,0 +1,32 @@
+degisken a = 5;
+degisken b = 3;
+eger a > 2 ve b > 2 {
+    yaz "ikisi buyuk";
+} yoksa {
+    yaz "hayir";
+}
+eger a > 10 veya b > 2 {
+    yaz "veya oldu";
+} yoksa {
+    yaz "veya olmadi";
+}
+degisken x = 17;
+yaz x % 5;
+degisken durum = tuz;
+eger durum {
+    yaz "dogru";
+} yoksa {
+    yaz "yanlis";
+}
+degisken sayi = 0;
+iken tuz {
+    sayi = sayi + 1;
+    eger sayi == 3 {
+        devam;
+    }
+    eger sayi == 5 {
+        kir;
+    }
+    yaz sayi;
+}
+yaz "bitti";

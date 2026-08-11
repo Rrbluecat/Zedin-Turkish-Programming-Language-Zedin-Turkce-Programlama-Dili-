@@ -1,0 +1,2 @@
+degisken r = oku_dosya("test_cikti_asm.txt");
+yaz r;

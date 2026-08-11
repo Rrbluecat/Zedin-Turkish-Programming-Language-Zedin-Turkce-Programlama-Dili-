@@ -1,0 +1,9 @@
+degisken m = "merhaba";
+yaz uzunluk(m);
+degisken c = m[0];
+yaz c;
+yaz m[1];
+degisken s = metine(123);
+yaz s;
+yaz sayiya("456") + 1;
+yaz char_kodu("A");

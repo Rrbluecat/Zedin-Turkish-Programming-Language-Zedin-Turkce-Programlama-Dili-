@@ -1,0 +1,54 @@
+fonk liste_olustur(n) {
+    degisken sonuc = [];
+    degisken i = 0;
+    iken i < n {
+        ekle(sonuc, i * 10);
+        i = i + 1;
+    }
+    don sonuc;
+}
+
+degisken liste = [10, 20, 30];
+yaz uzunluk(liste);
+yaz liste[0];
+yaz liste[2];
+liste[1] = 99;
+yaz liste[1];
+
+degisken d = [];
+ekle(d, 5);
+ekle(d, 7);
+ekle(d, 9);
+yaz uzunluk(d);
+yaz d[0];
+yaz d[1];
+yaz d[2];
+cikar(d, 1);
+yaz uzunluk(d);
+yaz d[0];
+yaz d[1];
+
+degisken ic = [1, 2];
+ekle(d, ic);
+yaz uzunluk(d);
+yaz d[2][0];
+
+degisken kayitlar = [];
+ekle(kayitlar, ["ali", 25]);
+ekle(kayitlar, ["veli", 30]);
+yaz uzunluk(kayitlar);
+yaz kayitlar[0][1];
+
+degisken f = liste_olustur(3);
+yaz uzunluk(f);
+yaz f[0];
+yaz f[2];
+
+degisken n = 0;
+iken n < 100 {
+    ekle(d, n);
+    n = n + 1;
+}
+yaz uzunluk(d);
+yaz d[102];
+yaz "bitti";

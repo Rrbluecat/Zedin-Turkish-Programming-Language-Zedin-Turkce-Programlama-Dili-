@@ -1,0 +1,2 @@
+byte_dosya_temizle("test_cikti_asm3.txt");
+byte_yaz("test_cikti_asm3.txt", 90);
