@@ -31,3 +31,9 @@ char* komut_calistir(const char* komut) {
     
     return tampon;
 }
+
+// Zedin Matematik Sarmallari
+#include <math.h>
+double kok(double x) { return sqrt(x); }
+double us(double x, double y) { return pow(x, y); }
+double yuvarla(double x) { return round(x); }

@@ -821,21 +821,9 @@ ana:
     stp x29, x30, [sp, #-48]!
     mov x29, sp
     adr x0, _str_1
-    mov x19, x0
-    mov x0, x19
-    stp x19, x20, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    bl yazdir
-    ldp x22, x23, [sp], #16
-    ldp x19, x20, [sp], #16
+    bl puts
     adr x0, _str_2
-    mov x19, x0
-    mov x0, x19
-    stp x19, x20, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    bl yazdir
-    ldp x22, x23, [sp], #16
-    ldp x19, x20, [sp], #16
+    bl puts
     mov x0, #5
     mov x19, x0
     mov x0, x19
@@ -845,20 +833,11 @@ ana:
     ldp x22, x23, [sp], #16
     ldp x19, x20, [sp], #16
     mov x19, x0
-    mov x0, x19
-    stp x19, x20, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    bl yazdir
-    ldp x22, x23, [sp], #16
-    ldp x19, x20, [sp], #16
+    adr x0, _fmt_sayi
+    mov x1, x19
+    bl printf
     adr x0, _str_3
-    mov x19, x0
-    mov x0, x19
-    stp x19, x20, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    bl yazdir
-    ldp x22, x23, [sp], #16
-    ldp x19, x20, [sp], #16
+    bl puts
     mov x0, #48
     mov x19, x0
     mov x0, #18
@@ -871,20 +850,11 @@ ana:
     ldp x22, x23, [sp], #16
     ldp x19, x20, [sp], #16
     mov x19, x0
-    mov x0, x19
-    stp x19, x20, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    bl yazdir
-    ldp x22, x23, [sp], #16
-    ldp x19, x20, [sp], #16
+    adr x0, _fmt_sayi
+    mov x1, x19
+    bl printf
     adr x0, _str_4
-    mov x19, x0
-    mov x0, x19
-    stp x19, x20, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    bl yazdir
-    ldp x22, x23, [sp], #16
-    ldp x19, x20, [sp], #16
+    bl puts
     mov x0, #12
     mov x19, x0
     mov x0, #15
@@ -897,20 +867,11 @@ ana:
     ldp x22, x23, [sp], #16
     ldp x19, x20, [sp], #16
     mov x19, x0
-    mov x0, x19
-    stp x19, x20, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    bl yazdir
-    ldp x22, x23, [sp], #16
-    ldp x19, x20, [sp], #16
+    adr x0, _fmt_sayi
+    mov x1, x19
+    bl printf
     adr x0, _str_5
-    mov x19, x0
-    mov x0, x19
-    stp x19, x20, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    bl yazdir
-    ldp x22, x23, [sp], #16
-    ldp x19, x20, [sp], #16
+    bl puts
     mov x0, #7
     mov x19, x0
     mov x0, x19
@@ -920,20 +881,11 @@ ana:
     ldp x22, x23, [sp], #16
     ldp x19, x20, [sp], #16
     mov x19, x0
-    mov x0, x19
-    stp x19, x20, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    bl yazdir
-    ldp x22, x23, [sp], #16
-    ldp x19, x20, [sp], #16
+    adr x0, _fmt_sayi
+    mov x1, x19
+    bl printf
     adr x0, _str_6
-    mov x19, x0
-    mov x0, x19
-    stp x19, x20, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    bl yazdir
-    ldp x22, x23, [sp], #16
-    ldp x19, x20, [sp], #16
+    bl puts
     mov x0, #8
     mov x19, x0
     mov x0, x19
@@ -943,20 +895,11 @@ ana:
     ldp x22, x23, [sp], #16
     ldp x19, x20, [sp], #16
     mov x19, x0
-    mov x0, x19
-    stp x19, x20, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    bl yazdir
-    ldp x22, x23, [sp], #16
-    ldp x19, x20, [sp], #16
+    adr x0, _fmt_sayi
+    mov x1, x19
+    bl printf
     adr x0, _str_7
-    mov x19, x0
-    mov x0, x19
-    stp x19, x20, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    bl yazdir
-    ldp x22, x23, [sp], #16
-    ldp x19, x20, [sp], #16
+    bl puts
     mov x0, #1
     mov x19, x0
     mov x0, #10
@@ -969,12 +912,9 @@ ana:
     ldp x22, x23, [sp], #16
     ldp x19, x20, [sp], #16
     mov x19, x0
-    mov x0, x19
-    stp x19, x20, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
-    bl yazdir
-    ldp x22, x23, [sp], #16
-    ldp x19, x20, [sp], #16
+    adr x0, _fmt_sayi
+    mov x1, x19
+    bl printf
     mov x0, #0
     mov sp, x29
     ldp x29, x30, [sp], #48
