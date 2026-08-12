@@ -1,0 +1,13 @@
+fonk dis_fonksiyon() {
+    degisken x = 42;
+    degisken mesaj = "Upvalue calisiyor!";
+    
+    fonk ic_fonksiyon() {
+        yaz mesaj;
+        yaz x;
+    }
+    
+    ic_fonksiyon();
+}
+
+dis_fonksiyon();

@@ -1,0 +1,9 @@
+aktar "sistem.zed";
+
+degisken ev = ev_klasoru() + "";
+yaz "Ev Klasörü:";
+yaz ev;
+
+degisken p = platform() + "";
+yaz "Platform:";
+yaz p;

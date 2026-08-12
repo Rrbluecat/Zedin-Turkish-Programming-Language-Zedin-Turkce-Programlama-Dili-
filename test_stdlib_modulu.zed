@@ -1,0 +1,4 @@
+aktar "asm_backend.zed";
+
+yaz "=== Stdlib Modülü Derleniyor ===";
+zedin_asm_derle("giris_stdlib_test.zed", "stdlib_test.s");

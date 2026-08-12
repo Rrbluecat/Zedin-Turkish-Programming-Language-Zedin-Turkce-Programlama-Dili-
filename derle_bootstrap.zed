@@ -1,0 +1,19 @@
+aktar "lexer.zed";
+aktar "parser.zed";
+aktar "asm_backend.zed";
+
+yaz "=== STAGE 1: Zedin Native Derleyici Bileşenleri Üretiliyor ===";
+
+yaz "[1/4] lexer.zed -> lexer.s";
+zedin_asm_derle("lexer.zed", "lexer.s");
+
+yaz "[2/4] parser.zed -> parser.s";
+zedin_asm_derle("parser.zed", "parser.s");
+
+yaz "[3/4] asm_backend.zed -> asm_backend.s";
+zedin_asm_derle("asm_backend.zed", "asm_backend.s");
+
+yaz "[4/4] compiler.zed -> compiler.s";
+zedin_asm_derle("compiler.zed", "compiler.s");
+
+yaz "=== Bütün Assembly Dosyaları Başarıyla Oluşturuldu! ===";

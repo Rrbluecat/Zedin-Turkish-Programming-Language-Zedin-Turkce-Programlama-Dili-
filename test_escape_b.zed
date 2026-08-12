@@ -1,0 +1,9 @@
+aktar "lexer.zed";
+yaz uzunluk("\b");
+yaz "b" == "\b";
+degisken tokenlar = tara("a b c");
+degisken i = 0;
+iken i < uzunluk(tokenlar) {
+    yaz tokenlar[i][0] + " = '" + tokenlar[i][1] + "'";
+    i = i + 1;
+}

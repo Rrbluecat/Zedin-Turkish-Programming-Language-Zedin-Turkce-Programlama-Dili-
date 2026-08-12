@@ -1,0 +1,8 @@
+aktar "lexer.zed";
+degisken kod = "eger r > n {";
+degisken tokenlar = tara(kod);
+degisken i = 0;
+iken i < uzunluk(tokenlar) {
+    yaz metine(i) + ": " + tokenlar[i][0] + " = '" + tokenlar[i][1] + "'";
+    i = i + 1;
+}

@@ -108,13 +108,20 @@ fonk tara(kaynak) {
 degisken _tok = [];
 degisken _pos = 0;
 
-fonk p_tip()    { don _tok[_pos][0]; }
-fonk p_deger()  { don _tok[_pos][1]; }
+fonk p_tip() {
+    eger _pos >= uzunluk(_tok) { don "EOF"; }
+    don _tok[_pos][0];
+}
+fonk p_deger() {
+    eger _pos >= uzunluk(_tok) { don ""; }
+    don _tok[_pos][1];
+}
 fonk p_ilerle() { _pos = _pos + 1; }
 
 fonk p_esles(beklenen) {
     eger p_tip() == beklenen { degisken d = p_deger(); p_ilerle(); don d; }
     yaz "Beklenen: " + beklenen + " Alinan: " + p_tip();
+    p_ilerle();
     don "HATA";
 }
 
@@ -217,6 +224,12 @@ fonk parse_blok() {
 }
 
 fonk parse_stmt() {
+    eger p_kw("aktar") veya (p_tip() == "ID" ve p_deger() == "aktar") {
+        p_ilerle();
+        degisken dosya = p_esles("STR");
+        p_esles("SC");
+        don ["AKTAR", dosya];
+    }
     eger p_kw("degisken") {
         p_ilerle(); degisken isim = p_esles("ID"); p_esles("OP");
         degisken deger = parse_ifade(); p_esles("SC");

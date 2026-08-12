@@ -1,0 +1,2 @@
+yaz uzunluk("\r");
+yaz "r" == "\r";

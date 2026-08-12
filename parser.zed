@@ -1,79 +1,63 @@
-// ============================================================
-// parser.zed - Zedin Self-hosting Parser v2
-// - Yeni lexer.zed ile tam uyumlu (EGER/IKEN/FONK tip ayrimlari)
-// - Liste tabanli AST: ["TIP", alan1, alan2, ...]
-// - Desteklenen: degisken, fonk, eger/yoksa, iken, don,
-//                kir, devam, liste literali, index erisimi,
-//                ve/veya/degil, tum operatorler
-// Kullanim: cat lexer.zed parser.zed > parser_tam.zed
-//           ./zedin parser_tam.zed
-// ============================================================
+degisken _hata_sayisi = 0;
 
-// ============================================================
-// PARSER DURUMU
-// ============================================================
-degisken _p_tok = [];   // token listesi (lexer.zed'den gelen)
-degisken _p_pos = 0;    // simdiki pozisyon
+degisken _p_tok = [];
+degisken _p_pos = 0;
 
-// Token alanlari: her token [tip, deger, satir, kolon]
-fonk p_simdiki()  { don _p_tok[_p_pos]; }
-fonk p_tip()      { don p_simdiki()[0]; }
-fonk p_deger()    { don p_simdiki()[1]; }
-fonk p_satir()    { don p_simdiki()[2]; }
-
-fonk p_ilerle() {
-    eger _p_pos + 1 < uzunluk(_p_tok) {
-        _p_pos = _p_pos + 1;
+fonk p_simdiki() {
+    eger _p_pos >= uzunluk(_p_tok) {
+        don ["EOF", "EOF", 0, 0];
     }
+    don _p_tok[_p_pos];
 }
 
-// Eslesme: beklenen tip gelirse ilerle ve degeri don, gelmezse hata
+fonk p_tip() { degisken s = p_simdiki(); don s[0]; }
+fonk p_deger() { degisken s = p_simdiki(); don s[1]; }
+fonk p_satir() { degisken s = p_simdiki(); don s[2]; }
+
+fonk p_ilerle() { _p_pos = _p_pos + 1; }
+
 fonk p_esles(beklenen) {
     eger p_tip() == beklenen {
         degisken d = p_deger();
         p_ilerle();
         don d;
     }
-    yaz "[PARSER HATA] Satir " + p_satir() + ": Beklenen '" + beklenen + "' ama '" + p_tip() + ":" + p_deger() + "' geldi";
+    yaz "[PARSER HATA] Satir " + metine(p_satir()) + " (Pos " + metine(_p_pos) + "): Beklenen '" + beklenen + "' ama '" + p_tip() + ":" + p_deger() + "' geldi";
+    _hata_sayisi = _hata_sayisi + 1;
+    eger _hata_sayisi >= 5 {
+        yaz "--- DEBUG: 5 Hata Alindi, Derleme Durduruldu ---";
+        _p_pos = uzunluk(_p_tok);
+        don "";
+    }
     p_ilerle();
     don "";
 }
 
-// Tip kontrolu (ilerlemeden)
-fonk p_kontrol(tip) {
-    don p_tip() == tip;
+fonk p_bak_sonraki() {
+    degisken sonraki_pos = _p_pos + 1;
+    eger sonraki_pos < uzunluk(_p_tok) {
+        degisken s = _p_tok[sonraki_pos];
+        don s[0];
+    }
+    don "EOF";
 }
 
-// Tip ve deger kontrolu
-fonk p_kontrol2(tip, deger) {
-    don p_tip() == tip ve p_deger() == deger;
-}
+fonk p_kontrol(tip) { don p_tip() == tip; }
+fonk p_kontrol2(tip, deger) { don p_tip() == tip ve p_deger() == deger; }
 
-// ============================================================
-// IFADE PARSER (Oncelik Siralari - Asagi = Dusuk Oncelik)
-// ============================================================
-
-// --- 7. Seviye: Birincil (en yuksek oncelik) ---
 fonk parse_birincil() {
-    // Sayi literali
     eger p_kontrol("SAYI") {
         degisken v = p_deger(); p_ilerle();
         don ["SAYI", v];
     }
-
-    // Ondali sayi
     eger p_kontrol("SAYI_ONDALI") {
         degisken v = p_deger(); p_ilerle();
         don ["SAYI_ONDALI", v];
     }
-
-    // String literali
     eger p_kontrol("STRING") {
         degisken v = p_deger(); p_ilerle();
         don ["STRING", v];
     }
-
-    // Boolean: tuz/ters
     eger p_kontrol("TUZ") {
         p_ilerle();
         don ["BOOL", "tuz"];
@@ -82,83 +66,72 @@ fonk parse_birincil() {
         p_ilerle();
         don ["BOOL", "ters"];
     }
-
-    // Bos (null)
     eger p_kontrol("BOS") {
         p_ilerle();
         don ["BOS"];
     }
-
-    // Tekli eksi: -ifade
     eger p_kontrol2("OP", "-") {
         p_ilerle();
         degisken sag = parse_birincil();
         don ["TEKLI", "-", sag];
     }
-
-    // Tekli degil: degil ifade
     eger p_kontrol("DEGIL") {
         p_ilerle();
         degisken sag = parse_birincil();
         don ["TEKLI", "degil", sag];
     }
-
-    // Liste literali: [e1, e2, ...]
     eger p_kontrol("L_SQ") {
         p_ilerle();
         degisken elemanlar = [];
         iken degil p_kontrol("R_SQ") ve degil p_kontrol("EOF") {
-            eger uzunluk(elemanlar) > 0 {
-                p_esles("VIRGUL");
-            }
+            eger uzunluk(elemanlar) > 0 { p_esles("VIRGUL"); }
             ekle(elemanlar, parse_ifade());
         }
         p_esles("R_SQ");
         don ["LISTE", elemanlar];
     }
-
-    // Parantezli ifade: (ifade)
     eger p_kontrol("L_P") {
         p_ilerle();
-        degisken e = parse_ifade();
+            // Degiskene deger atama: x = ifade;
+    eger p_kontrol("ID") {
+        degisken isim = p_deger();
+        eger p_bak_sonraki() == "ESIT" veya p_kontrol2("ESIT", "=") {
+            p_ilerle();
+            p_esles("ESIT");
+            degisken deger = parse_ifade();
+            p_esles("SC");
+            don ["ATAMA", isim, deger];
+        }
+    }
+
+    degisken e = parse_ifade();
         p_esles("R_P");
         don e;
     }
-
-    // Tanimlayici: degisken veya fonksiyon cagrisi
     eger p_kontrol("ID") {
         degisken isim = p_deger();
         p_ilerle();
-
-        // Fonksiyon cagrisi: isim(arg1, arg2, ...)
         eger p_kontrol("L_P") {
             p_ilerle();
             degisken arglar = [];
             iken degil p_kontrol("R_P") ve degil p_kontrol("EOF") {
-                eger uzunluk(arglar) > 0 {
-                    p_esles("VIRGUL");
-                }
+                eger uzunluk(arglar) > 0 { p_esles("VIRGUL"); }
                 ekle(arglar, parse_ifade());
             }
             p_esles("R_P");
             don ["CAGRI", isim, arglar];
         }
-
         don ["ID", isim];
     }
 
-    // Bilinmeyen token - hata dugumu
-    yaz "[PARSER HATA] Satir " + p_satir() + ": Beklenmeyen token '" + p_tip() + ":" + p_deger() + "'";
+    yaz "[PARSER HATA] Satir " + metine(p_satir()) + ": Beklenmeyen token '" + p_tip() + ":" + p_deger() + "'";
     p_ilerle();
     don ["HATA", "beklenmeyen_token"];
 }
 
-// --- Index ve nokta erisimi (en yuksek oncelikli postfix) ---
 fonk parse_postfix() {
     degisken sol = parse_birincil();
-
     iken tuz {
-        // Dizi indexleme: ifade[index]
         eger p_kontrol("L_SQ") {
             p_ilerle();
             degisken idx = parse_ifade();
@@ -166,8 +139,6 @@ fonk parse_postfix() {
             sol = ["INDEX", sol, idx];
             devam;
         }
-
-        // Alan erisimi: nesne.alan veya nesne.metod(...)
         eger p_kontrol("NOKTA") {
             p_ilerle();
             degisken alan = p_esles("ID");
@@ -175,9 +146,7 @@ fonk parse_postfix() {
                 p_ilerle();
                 degisken arglar = [];
                 iken degil p_kontrol("R_P") ve degil p_kontrol("EOF") {
-                    eger uzunluk(arglar) > 0 {
-                        p_esles("VIRGUL");
-                    }
+                    eger uzunluk(arglar) > 0 { p_esles("VIRGUL"); }
                     ekle(arglar, parse_ifade());
                 }
                 p_esles("R_P");
@@ -187,49 +156,71 @@ fonk parse_postfix() {
             sol = ["ALAN", sol, alan];
             devam;
         }
-
         kir;
     }
-
     don sol;
 }
 
-// --- Carpma / Bolme / Mod ---
 fonk parse_carpma() {
     degisken sol = parse_postfix();
-    iken p_kontrol("OP") ve (p_deger() == "*" veya p_deger() == "/" veya p_deger() == "%" veya p_deger() == "**") {
-        degisken op = p_deger(); p_ilerle();
-        degisken sag = parse_postfix();
-        sol = ["BINOP", op, sol, sag];
+    iken p_kontrol("OP") {
+        degisken op = p_deger();
+        degisken ok = 0;
+        eger op == "*" { ok = 1; }
+        eger op == "/" { ok = 1; }
+        eger op == "%" { ok = 1; }
+        eger op == "**" { ok = 1; }
+        eger ok == 1 {
+            p_ilerle();
+            degisken sag = parse_postfix();
+            sol = ["BINOP", op, sol, sag];
+        } yoksa {
+            kir;
+        }
     }
     don sol;
 }
 
-// --- Toplama / Cikarma ---
 fonk parse_toplama() {
     degisken sol = parse_carpma();
-    iken p_kontrol("OP") ve (p_deger() == "+" veya p_deger() == "-") {
-        degisken op = p_deger(); p_ilerle();
-        degisken sag = parse_carpma();
-        sol = ["BINOP", op, sol, sag];
+    iken p_kontrol("OP") {
+        degisken op = p_deger();
+        degisken ok = 0;
+        eger op == "+" { ok = 1; }
+        eger op == "-" { ok = 1; }
+        eger ok == 1 {
+            p_ilerle();
+            degisken sag = parse_carpma();
+            sol = ["BINOP", op, sol, sag];
+        } yoksa {
+            kir;
+        }
     }
     don sol;
 }
 
-// --- Karsilastirma ---
 fonk parse_karsilastirma() {
     degisken sol = parse_toplama();
-    iken p_kontrol("OP") ve (p_deger() == "==" veya p_deger() == "!=" veya
-                              p_deger() == "<"  veya p_deger() == ">"  veya
-                              p_deger() == "<=" veya p_deger() == ">=") {
-        degisken op = p_deger(); p_ilerle();
-        degisken sag = parse_toplama();
-        sol = ["BINOP", op, sol, sag];
+    iken p_kontrol("OP") {
+        degisken op = p_deger();
+        degisken ok = 0;
+        eger op == "==" { ok = 1; }
+        eger op == "!=" { ok = 1; }
+        eger op == "<=" { ok = 1; }
+        eger op == ">=" { ok = 1; }
+        eger op == "<"  { ok = 1; }
+        eger op == ">"  { ok = 1; }
+        eger ok == 1 {
+            p_ilerle();
+            degisken sag = parse_toplama();
+            sol = ["BINOP", op, sol, sag];
+        } yoksa {
+            kir;
+        }
     }
     don sol;
 }
 
-// --- Mantik VE ---
 fonk parse_ve() {
     degisken sol = parse_karsilastirma();
     iken p_kontrol("VE") {
@@ -240,7 +231,6 @@ fonk parse_ve() {
     don sol;
 }
 
-// --- Mantik VEYA ---
 fonk parse_veya() {
     degisken sol = parse_ve();
     iken p_kontrol("VEYA") {
@@ -251,77 +241,93 @@ fonk parse_veya() {
     don sol;
 }
 
-// --- Atama (en dusuk oncelik, sag eslesme) ---
 fonk parse_ifade() {
     degisken sol = parse_veya();
 
-    // Atama: x = ifade
     eger p_kontrol("ESIT") {
         p_ilerle();
-        degisken sag = parse_ifade();  // sag eslesme
+        degisken sag = parse_ifade();
         don ["ATAMA", sol, sag];
     }
 
-    // Bilesik atama: x += ifade, x -= ifade, vb.
-    eger p_kontrol("OP") ve (p_deger() == "+=" veya p_deger() == "-=" veya
-                              p_deger() == "*=" veya p_deger() == "/=" veya
-                              p_deger() == "%=") {
-        degisken op = p_deger(); p_ilerle();
-        degisken sag = parse_ifade();
-        don ["BILESIK_ATAMA", op, sol, sag];
+    eger p_kontrol("OP") {
+        degisken op = p_deger();
+        degisken ok = 0;
+        eger op == "+=" { ok = 1; }
+        eger op == "-=" { ok = 1; }
+        eger op == "*=" { ok = 1; }
+        eger op == "/=" { ok = 1; }
+        eger op == "%=" { ok = 1; }
+        eger ok == 1 {
+            p_ilerle();
+            degisken sag = parse_ifade();
+            don ["BILESIK_ATAMA", op, sol, sag];
+        }
     }
 
     don sol;
 }
 
-// ============================================================
-// STATEMENT PARSER
-// ============================================================
-
 fonk parse_stmt() {
-
-    // --- degisken bildirimi ---
+    eger p_kontrol("AKTAR") veya (p_kontrol("ID") ve p_deger() == "aktar") {
+        p_ilerle();
+        degisken dosya = p_deger();
+        p_ilerle();
+        p_esles("SC");
+        don ["AKTAR", dosya];
+    }
+    eger p_kontrol("AKTAR") veya (p_kontrol("ID") ve p_deger() == "aktar") {
+        p_ilerle();
+        degisken dosya = p_deger();
+        p_ilerle();
+        p_esles("SC");
+        don ["AKTAR", dosya];
+    }
     eger p_kontrol("DEGISKEN") {
         p_ilerle();
         degisken isim = p_esles("ID");
         p_esles("ESIT");
         degisken deger = parse_ifade();
-        p_esles("NOKTA_VIRGUL");
+        p_esles("SC");
         don ["DEGISKEN", isim, deger];
     }
 
-    // --- fonksiyon tanimi ---
     eger p_kontrol("FONK") {
         p_ilerle();
         degisken isim = p_esles("ID");
         p_esles("L_P");
         degisken params = [];
-        iken degil p_kontrol("R_P") ve degil p_kontrol("EOF") {
+        iken p_tip() != "EOF" {
+            eger p_kontrol("R_P") { kir; }
             eger uzunluk(params) > 0 {
-                p_esles("VIRGUL");
+                eger p_kontrol("VIRGUL") veya p_kontrol("CM") {
+                    p_ilerle();
+                } yoksa {
+                    p_esles("VIRGUL");
+                }
             }
-            ekle(params, p_esles("ID"));
+            eger p_kontrol("ID") {
+                ekle(params, p_esles("ID"));
+            } yoksa {
+                kir;
+            }
         }
         p_esles("R_P");
         degisken govde = parse_blok();
         don ["FONK", isim, params, govde];
     }
 
-    // --- eger / yoksa ---
     eger p_kontrol("EGER") {
         p_ilerle();
         degisken kosul = parse_ifade();
         degisken then_blok = parse_blok();
 
-        // Zincirleme: yoksa eger ...
         eger p_kontrol("YOKSA") {
             p_ilerle();
-            // yoksa eger -> zincirleme
             eger p_kontrol("EGER") {
                 degisken else_dal = parse_stmt();
                 don ["EGER", kosul, then_blok, else_dal];
             }
-            // yoksa { blok }
             degisken else_blok = parse_blok();
             don ["EGER", kosul, then_blok, else_blok];
         }
@@ -329,7 +335,6 @@ fonk parse_stmt() {
         don ["EGER", kosul, then_blok, ["BLOK", []]];
     }
 
-    // --- iken dongusu ---
     eger p_kontrol("IKEN") {
         p_ilerle();
         degisken kosul = parse_ifade();
@@ -337,59 +342,50 @@ fonk parse_stmt() {
         don ["IKEN", kosul, govde];
     }
 
-    // --- don (return) ---
     eger p_kontrol("DON") {
         p_ilerle();
-        // Bos don (noktalı virgul gelirse)
         eger p_kontrol("NOKTA_VIRGUL") {
             p_ilerle();
             don ["DON", ["BOS"]];
         }
         degisken e = parse_ifade();
-        p_esles("NOKTA_VIRGUL");
+        p_esles("SC");
         don ["DON", e];
     }
 
-    // --- kir (break) ---
     eger p_kontrol("KIR") {
         p_ilerle();
-        p_esles("NOKTA_VIRGUL");
+        p_esles("SC");
         don ["KIR"];
     }
 
-    // --- devam (continue) ---
     eger p_kontrol("DEVAM") {
         p_ilerle();
-        p_esles("NOKTA_VIRGUL");
+        p_esles("SC");
         don ["DEVAM"];
     }
 
-    // --- yaz (print) ---
     eger p_kontrol("YAZ") {
         p_ilerle();
         degisken e = parse_ifade();
-        p_esles("NOKTA_VIRGUL");
+        p_esles("SC");
         don ["YAZ", e];
     }
 
-    // --- Blok statement: { ... } ---
     eger p_kontrol("L_B") {
         don parse_blok();
     }
 
-    // --- Noktalı virgul: bos statement ---
     eger p_kontrol("NOKTA_VIRGUL") {
         p_ilerle();
         don ["BOS_STMT"];
     }
 
-    // --- İfade statement (atama, cagri, vb.) ---
     degisken e = parse_ifade();
-    p_esles("NOKTA_VIRGUL");
+    p_esles("SC");
     don ["IFADE", e];
 }
 
-// Blok: { stmt* }
 fonk parse_blok() {
     p_esles("L_B");
     degisken stmtler = [];
@@ -400,10 +396,10 @@ fonk parse_blok() {
     don ["BLOK", stmtler];
 }
 
-// --- Ana parse fonksiyonu ---
 fonk parse(tokenlar) {
     _p_tok = tokenlar;
     _p_pos = 0;
+    _hata_sayisi = 0;
     degisken stmtler = [];
     iken degil p_kontrol("EOF") {
         ekle(stmtler, parse_stmt());
@@ -411,195 +407,7 @@ fonk parse(tokenlar) {
     don ["PROGRAM", stmtler];
 }
 
-// ============================================================
-// AST YAZICI - Hata ayiklama icin guzel ciktil
-// ============================================================
-fonk ast_yaz(dugum, girinti) {
-    eger dugum == bos {
-        yaz girinti + "(bos)";
-        don bos;
-    }
-
-    degisken tip = dugum[0];
-
-    eger tip == "PROGRAM" {
-        yaz girinti + "PROGRAM";
-        degisken i = 0;
-        iken i < uzunluk(dugum[1]) {
-            ast_yaz(dugum[1][i], girinti + "  ");
-            i = i + 1;
-        }
-        don bos;
-    }
-    eger tip == "BLOK" {
-        yaz girinti + "BLOK";
-        degisken i = 0;
-        iken i < uzunluk(dugum[1]) {
-            ast_yaz(dugum[1][i], girinti + "  ");
-            i = i + 1;
-        }
-        don bos;
-    }
-    eger tip == "DEGISKEN" {
-        yaz girinti + "DEGISKEN '" + dugum[1] + "'";
-        ast_yaz(dugum[2], girinti + "  ");
-        don bos;
-    }
-    eger tip == "FONK" {
-        yaz girinti + "FONK '" + dugum[1] + "' params=" + dugum[2];
-        ast_yaz(dugum[3], girinti + "  ");
-        don bos;
-    }
-    eger tip == "EGER" {
-        yaz girinti + "EGER";
-        yaz girinti + "  kosul:";
-        ast_yaz(dugum[1], girinti + "    ");
-        yaz girinti + "  then:";
-        ast_yaz(dugum[2], girinti + "    ");
-        yaz girinti + "  yoksa:";
-        ast_yaz(dugum[3], girinti + "    ");
-        don bos;
-    }
-    eger tip == "IKEN" {
-        yaz girinti + "IKEN";
-        yaz girinti + "  kosul:";
-        ast_yaz(dugum[1], girinti + "    ");
-        yaz girinti + "  govde:";
-        ast_yaz(dugum[2], girinti + "    ");
-        don bos;
-    }
-    eger tip == "BINOP" {
-        yaz girinti + "BINOP(" + dugum[1] + ")";
-        ast_yaz(dugum[2], girinti + "  ");
-        ast_yaz(dugum[3], girinti + "  ");
-        don bos;
-    }
-    eger tip == "TEKLI" {
-        yaz girinti + "TEKLI(" + dugum[1] + ")";
-        ast_yaz(dugum[2], girinti + "  ");
-        don bos;
-    }
-    eger tip == "ATAMA" {
-        yaz girinti + "ATAMA";
-        ast_yaz(dugum[1], girinti + "  ");
-        ast_yaz(dugum[2], girinti + "  ");
-        don bos;
-    }
-    eger tip == "CAGRI" {
-        yaz girinti + "CAGRI '" + dugum[1] + "' args=" + uzunluk(dugum[2]);
-        don bos;
-    }
-    eger tip == "INDEX" {
-        yaz girinti + "INDEX";
-        ast_yaz(dugum[1], girinti + "  ");
-        ast_yaz(dugum[2], girinti + "  ");
-        don bos;
-    }
-    eger tip == "LISTE" {
-        yaz girinti + "LISTE[" + uzunluk(dugum[1]) + " eleman]";
-        don bos;
-    }
-    eger tip == "SAYI" {
-        yaz girinti + "SAYI(" + dugum[1] + ")";
-        don bos;
-    }
-    eger tip == "SAYI_ONDALI" {
-        yaz girinti + "SAYI_ONDALI(" + dugum[1] + ")";
-        don bos;
-    }
-    eger tip == "STRING" {
-        yaz girinti + "STRING(" + dugum[1] + ")";
-        don bos;
-    }
-    eger tip == "BOOL" {
-        yaz girinti + "BOOL(" + dugum[1] + ")";
-        don bos;
-    }
-    eger tip == "ID" {
-        yaz girinti + "ID(" + dugum[1] + ")";
-        don bos;
-    }
-    eger tip == "DON" {
-        yaz girinti + "DON";
-        ast_yaz(dugum[1], girinti + "  ");
-        don bos;
-    }
-    eger tip == "YAZ" {
-        yaz girinti + "YAZ";
-        ast_yaz(dugum[1], girinti + "  ");
-        don bos;
-    }
-    eger tip == "KIR" {
-        yaz girinti + "KIR";
-        don bos;
-    }
-    eger tip == "DEVAM" {
-        yaz girinti + "DEVAM";
-        don bos;
-    }
-    eger tip == "BILESIK_ATAMA" {
-        yaz girinti + "BILESIK_ATAMA(" + dugum[1] + ")";
-        ast_yaz(dugum[2], girinti + "  ");
-        ast_yaz(dugum[3], girinti + "  ");
-        don bos;
-    }
-
-    // Bilinmeyen dugum
-    yaz girinti + "[?] " + tip;
-}
-
-// ============================================================
-// KULLANIM KOLAYLIGI: tek adimda lexer + parser
-// ============================================================
 fonk zedin_parse(kaynak_kodu) {
     degisken tokenlar = tara(kaynak_kodu);
     don parse(tokenlar);
 }
-
-// ============================================================
-// TEST
-// ============================================================
-// yaz "=== Zedin Self-hosting Parser v2 ===";
-// yaz "";
-
-// // Test 1: Temel degisken
-// yaz "--- TEST 1: degisken bildirimi ---";
-// ast_yaz(zedin_parse("degisken x = 42;"), "");
-// yaz "";
-
-// // Test 2: Aritmetik
-// yaz "--- TEST 2: aritmetik ifade ---";
-// ast_yaz(zedin_parse("degisken y = x + 5 * 2;"), "");
-// yaz "";
-
-// // Test 3: eger/yoksa
-// yaz "--- TEST 3: eger/yoksa ---";
-// ast_yaz(zedin_parse("eger x > 10 { yaz x; } yoksa { yaz 0; }"), "");
-// yaz "";
-
-// // Test 4: iken dongusu
-// yaz "--- TEST 4: iken dongusu ---";
-// ast_yaz(zedin_parse("iken x > 0 { x = x - 1; }"), "");
-// yaz "";
-
-// // Test 5: fonksiyon tanimi ve cagrisi
-// yaz "--- TEST 5: fonksiyon ---";
-// ast_yaz(zedin_parse("fonk topla(a, b) { don a + b; } degisken z = topla(3, 4);"), "");
-// yaz "";
-
-// // Test 6: Liste
-// yaz "--- TEST 6: liste literali ---";
-// ast_yaz(zedin_parse("degisken liste = [1, 2, 3];"), "");
-// yaz "";
-
-// // Test 7: Mantik operatorler
-// yaz "--- TEST 7: ve/veya ---";
-// ast_yaz(zedin_parse("eger x > 0 ve x < 100 { yaz tuz; }"), "");
-// yaz "";
-
-// // Test 8: Index erisimi
-// yaz "--- TEST 8: index erisimi ---";
-// ast_yaz(zedin_parse("degisken ilk = liste[0];"), "");
-// yaz "";
-
-// yaz "=== Parser testleri tamamlandi ===";

@@ -1,0 +1,10 @@
+aktar "lexer.zed";
+aktar "parser.zed";
+aktar "asm_backend.zed";
+
+// Test etmek istediğimiz sistem modülünü ve test kodunu derleyelim
+yaz "=== Sistem Modülü Derleniyor ===";
+
+// Örnek bir test scripti oluşturup assembly'ye dönüştürüyoruz
+zedin_asm_derle("giris_sistem_test.zed", "sistem_test.s");
+yaz "=== sistem_test.s Başarıyla Üretildi! ===";

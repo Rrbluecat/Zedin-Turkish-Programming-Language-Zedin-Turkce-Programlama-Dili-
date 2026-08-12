@@ -1,0 +1,4 @@
+fonk test1(n) {
+    eger n == 2 { don tuz; }
+    don ters;
+}

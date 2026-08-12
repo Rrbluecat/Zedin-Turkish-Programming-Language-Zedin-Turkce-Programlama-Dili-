@@ -1,0 +1,7 @@
+aktar "lexer.zed";
+aktar "parser.zed";
+aktar "asm_backend.zed";
+
+yaz "=== stres_test.zed ARM64 Assembly'ye Cevriliyor ===";
+zedin_asm_derle("stres_test.zed", "test.s");
+yaz "=== test.s Basariyla Uretildi! ===";

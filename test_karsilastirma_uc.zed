@@ -1,0 +1,6 @@
+fonk test3(n) {
+    eger n < 2 { don ters; }
+    eger n == 2 { don tuz; }
+    eger n % 2 == 0 { don ters; }
+    don tuz;
+}

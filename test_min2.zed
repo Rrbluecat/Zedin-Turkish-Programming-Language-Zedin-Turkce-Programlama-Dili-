@@ -1,0 +1,9 @@
+fonk kombinasyon(n, r) {
+    degisken sonuc = 0;
+    eger r > n {
+        sonuc = 0;
+    } yoksa {
+        sonuc = 1;
+    }
+    don sonuc;
+}

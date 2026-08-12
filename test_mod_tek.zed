@@ -1,0 +1,4 @@
+fonk test4(n) {
+    degisken x = n % 2;
+    don x;
+}

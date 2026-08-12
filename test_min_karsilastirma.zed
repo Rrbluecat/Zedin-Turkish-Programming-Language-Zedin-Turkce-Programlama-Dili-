@@ -1,0 +1,14 @@
+fonk fakt(n) {
+    eger n <= 1 { don 1; }
+    don n * fakt(n - 1);
+}
+
+fonk kombinasyon(n, r) {
+    degisken sonuc = 0;
+    eger r > n {
+        sonuc = 0;
+    } yoksa {
+        sonuc = fakt(n) / (fakt(r) * fakt(n - r));
+    }
+    don sonuc;
+}

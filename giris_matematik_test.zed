@@ -1,0 +1,26 @@
+aktar "matematik.zed";
+
+fonk ana() {
+    yazdir("=== Zedin Matematik Modulu Testi ===");
+    
+    yazdir("5 Faktoriyel (Beklenen: 120):");
+    yazdir(fakt(5));
+    
+    yazdir("EBOB(48, 18) (Beklenen: 6):");
+    yazdir(ebob(48, 18));
+    
+    yazdir("EKOK(12, 15) (Beklenen: 60):");
+    yazdir(ekok(12, 15));
+    
+    yazdir("7 Asal mi? (Beklenen: 1):");
+    yazdir(asal_mi(7));
+    
+    yazdir("Fibonacci(8) (Beklenen: 21):");
+    yazdir(fib(8));
+
+    yazdir("Sigma(1, 10) (Beklenen: 55):");
+    yazdir(sigma(1, 10));
+
+    don 0;
+}
+

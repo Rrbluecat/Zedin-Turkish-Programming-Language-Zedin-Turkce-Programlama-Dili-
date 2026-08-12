@@ -1,0 +1,11 @@
+fonk asal_mi(n) {
+    eger n < 2 { don ters; }
+    eger n == 2 { don tuz; }
+    eger n % 2 == 0 { don ters; }
+    degisken i = 3;
+    iken i * i <= n {
+        eger n % i == 0 { don ters; }
+        i = i + 2;
+    }
+    don tuz;
+}

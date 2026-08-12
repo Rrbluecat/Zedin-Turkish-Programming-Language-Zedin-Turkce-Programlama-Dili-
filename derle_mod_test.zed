@@ -1,0 +1,4 @@
+aktar "lexer.zed";
+aktar "parser.zed";
+aktar "asm_backend.zed";
+zedin_asm_derle("test_mod_tek.zed", "test_mod.s");

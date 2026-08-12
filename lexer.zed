@@ -1,122 +1,47 @@
 // ============================================================
-// lexer.zed - Zedin ile yazilmis Zedin Lexer (Self-hosting v2)
-// Yenilikler:
-//   - Turkce karakter destegi (g, s, i, o, u, c ve buyukleri)
-//   - Ondali sayilar (3.14, 0.5)
-//   - String escape karakterleri (\n \t \\ \")
-//   - Satir/kolon takibi (hata mesajlari icin)
-//   - Keyword tip ayrimi (EGER, IKEN, FONK, ...)
-//   - Eksik W harfi duzeltildi
-//   - ':' ve '.' tokenlari eklendi
+// lexer.zed - Zedin Self-hosting Lexer
 // ============================================================
 
-// --- Yardimci fonksiyonlar ---
-
-fonk harf_mi(k) {
-    // Latin harfler + alt cizgi + Turkce unicode karakterler
-    don (k == "_" veya
-         k == "a" veya k == "b" veya k == "c" veya k == "d" veya
-         k == "e" veya k == "f" veya k == "g" veya k == "h" veya
-         k == "i" veya k == "j" veya k == "k" veya k == "l" veya
-         k == "m" veya k == "n" veya k == "o" veya k == "p" veya
-         k == "q" veya k == "r" veya k == "s" veya k == "t" veya
-         k == "u" veya k == "v" veya k == "w" veya k == "x" veya
-         k == "y" veya k == "z" veya
-         k == "A" veya k == "B" veya k == "C" veya k == "D" veya
-         k == "E" veya k == "F" veya k == "G" veya k == "H" veya
-         k == "I" veya k == "J" veya k == "K" veya k == "L" veya
-         k == "M" veya k == "N" veya k == "O" veya k == "P" veya
-         k == "Q" veya k == "R" veya k == "S" veya k == "T" veya
-         k == "U" veya k == "V" veya k == "W" veya k == "X" veya
-         k == "Y" veya k == "Z" veya
-         // Turkce unicode karakterler
-         k == "ğ" veya k == "ü" veya k == "ş" veya k == "ı" veya k == "ö" veya k == "ç" veya
-         k == "Ğ" veya k == "Ü" veya k == "Ş" veya k == "İ" veya k == "Ö" veya k == "Ç");
-}
-
-fonk rakam_mi(k) {
-    don (k == "0" veya k == "1" veya k == "2" veya k == "3" veya
-         k == "4" veya k == "5" veya k == "6" veya k == "7" veya
-         k == "8" veya k == "9");
-}
-
-fonk bosluk_mu(k) {
-    don (k == " " veya k == "\t" veya k == "\r");
-}
-
-// --- Keyword tip tablosu ---
-// Her keyword kendi tip adini dondurur, boylece parser eger/iken/fonk diye
-// dogrudan eslestirebilir. Bilinmeyen kelimeler "ID" doner.
-fonk keyword_tipi(kelime) {
-    eger kelime == "eger"      { don "EGER"; }
-    eger kelime == "yoksa"     { don "YOKSA"; }
-    eger kelime == "iken"      { don "IKEN"; }
-    eger kelime == "fonk"      { don "FONK"; }
-    eger kelime == "don"       { don "DON"; }
-    eger kelime == "degisken"  { don "DEGISKEN"; }
-    eger kelime == "devam"     { don "DEVAM"; }
-    eger kelime == "kir"       { don "KIR"; }
-    eger kelime == "yaz"       { don "YAZ"; }
-    eger kelime == "ve"        { don "VE"; }
-    eger kelime == "veya"      { don "VEYA"; }
-    eger kelime == "degil"     { don "DEGIL"; }
-    eger kelime == "tuz"       { don "TUZ"; }   // true
-    eger kelime == "ters"      { don "TERS"; }  // false
-    eger kelime == "bos"       { don "BOS"; }   // null
-    eger kelime == "sinif"     { don "SINIF"; }
-    eger kelime == "yeni"      { don "YENI"; }
-    eger kelime == "icin"      { don "ICIN"; }
-    eger kelime == "getir"     { don "GETIR"; }
-    don "ID";
-}
-
-// --- Token listesi ve yardimci ---
-degisken _lexer_tokenlar = [];
 degisken _lex_satir = 1;
 degisken _lex_kolon = 1;
+degisken _lexer_tokenlar = [];
 
 fonk tok_ekle_lex(tip, deger, satir, kolon) {
     ekle(_lexer_tokenlar, [tip, deger, satir, kolon]);
 }
 
-// --- Escape karakter cozucu ---
-fonk escape_coz(ham) {
-    degisken sonuc = "";
-    degisken j = 0;
-    degisken n = uzunluk(ham);
-    iken j < n {
-        degisken c = ham[j];
-        eger c == "\\" ve j + 1 < n {
-            degisken sonraki = ham[j + 1];
-            eger sonraki == "n"  { sonuc = sonuc + "\n"; j = j + 2; devam; }
-            eger sonraki == "t"  { sonuc = sonuc + "\t"; j = j + 2; devam; }
-            eger sonraki == "r"  { sonuc = sonuc + "\r"; j = j + 2; devam; }
-            eger sonraki == "\\" { sonuc = sonuc + "\\"; j = j + 2; devam; }
-            eger sonraki == "\"" { sonuc = sonuc + "\""; j = j + 2; devam; }
-            eger sonraki == "0"  { sonuc = sonuc + "\0"; j = j + 2; devam; }
-            // Bilinmeyen escape -> oldugu gibi birak
-            sonuc = sonuc + c;
-            j = j + 1;
-            devam;
-        }
-        sonuc = sonuc + c;
-        j = j + 1;
+fonk harf_mi(c) {
+    degisken h = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_ÇçĞğİıÖöŞşÜü";
+    degisken i = 0;
+    iken i < uzunluk(h) {
+        eger c == h[i] { don 1; }
+        i = i + 1;
     }
-    don sonuc;
+    don 0;
 }
 
-// --- Ana Lexer ---
+fonk rakam_mi(c) {
+    degisken r = "0123456789";
+    degisken i = 0;
+    iken i < uzunluk(r) {
+        eger c == r[i] { don 1; }
+        i = i + 1;
+    }
+    don 0;
+}
+
 fonk tara(kaynak) {
     _lexer_tokenlar = [];
     _lex_satir = 1;
     _lex_kolon = 1;
-    degisken i = 0;
+
     degisken boy = uzunluk(kaynak);
+    degisken i = 0;
 
     iken i < boy {
         degisken k = kaynak[i];
 
-        // Yeni satir - satir sayacini guncelle
+        // Yeni satir
         eger k == "\n" {
             _lex_satir = _lex_satir + 1;
             _lex_kolon = 1;
@@ -124,14 +49,14 @@ fonk tara(kaynak) {
             devam;
         }
 
-        // Bosluk ve tab atla
-        eger bosluk_mu(k) {
+        // Bosluklar
+        eger k == " " veya k == "\t" veya char_kodu(k) == 13 {
             _lex_kolon = _lex_kolon + 1;
             i = i + 1;
             devam;
         }
 
-        // Yorum satiri (//)
+        // Yorumlar: // ...
         eger k == "/" ve i + 1 < boy ve kaynak[i + 1] == "/" {
             iken i < boy ve kaynak[i] != "\n" {
                 i = i + 1;
@@ -139,131 +64,74 @@ fonk tara(kaynak) {
             devam;
         }
 
-        // Cok satirli yorum (/* ... */)
-        eger k == "/" ve i + 1 < boy ve kaynak[i + 1] == "*" {
-            i = i + 2;
-            iken i + 1 < boy {
-                eger kaynak[i] == "\n" {
-                    _lex_satir = _lex_satir + 1;
-                    _lex_kolon = 1;
-                }
-                eger kaynak[i] == "*" ve kaynak[i + 1] == "/" {
-                    i = i + 2;
-                    kir;
-                }
-                i = i + 1;
-            }
-            devam;
-        }
-
-        // Sayi (tam veya ondali)
+        // Rakam / Sayi
         eger rakam_mi(k) {
-            degisken sayi = "";
-            degisken tok_satir = _lex_satir;
-            degisken tok_kolon = _lex_kolon;
-            degisken ondali = "ters";
-            iken i < boy ve rakam_mi(kaynak[i]) {
-                sayi = sayi + kaynak[i];
+            degisken bas_kolon = _lex_kolon;
+            degisken s = "";
+            degisken ondali = 0;
+            iken i < boy ve (rakam_mi(kaynak[i]) veya kaynak[i] == ".") {
+                eger kaynak[i] == "." { ondali = 1; }
+                s = s + kaynak[i];
                 i = i + 1;
                 _lex_kolon = _lex_kolon + 1;
             }
-            // Ondali kisim: '.' sonrasi rakam varsa
-            eger i < boy ve kaynak[i] == "." ve i + 1 < boy ve rakam_mi(kaynak[i + 1]) {
-                ondali = "tuz";
-                sayi = sayi + ".";
-                i = i + 1;
-                _lex_kolon = _lex_kolon + 1;
-                iken i < boy ve rakam_mi(kaynak[i]) {
-                    sayi = sayi + kaynak[i];
-                    i = i + 1;
-                    _lex_kolon = _lex_kolon + 1;
-                }
-            }
-            eger ondali == "tuz" {
-                tok_ekle_lex("SAYI_ONDALI", sayi, tok_satir, tok_kolon);
+            eger ondali == 1 {
+                tok_ekle_lex("SAYI_ONDALI", s, _lex_satir, bas_kolon);
             } yoksa {
-                tok_ekle_lex("SAYI", sayi, tok_satir, tok_kolon);
+                tok_ekle_lex("SAYI", s, _lex_satir, bas_kolon);
             }
             devam;
         }
 
-        // Tanimlayici veya keyword
+        // Tanimlayici veya Anahtar Kelime
         eger harf_mi(k) {
+            degisken bas_kolon = _lex_kolon;
             degisken kelime = "";
-            degisken tok_satir = _lex_satir;
-            degisken tok_kolon = _lex_kolon;
             iken i < boy ve (harf_mi(kaynak[i]) veya rakam_mi(kaynak[i])) {
                 kelime = kelime + kaynak[i];
                 i = i + 1;
                 _lex_kolon = _lex_kolon + 1;
             }
-            degisken tip = keyword_tipi(kelime);
-            tok_ekle_lex(tip, kelime, tok_satir, tok_kolon);
+
+            eger kelime == "degisken" { tok_ekle_lex("DEGISKEN", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "fonk"     { tok_ekle_lex("FONK", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "eger"     { tok_ekle_lex("EGER", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "yoksa"    { tok_ekle_lex("YOKSA", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "iken"     { tok_ekle_lex("IKEN", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "don"      { tok_ekle_lex("DON", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "kir"      { tok_ekle_lex("KIR", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "devam"    { tok_ekle_lex("DEVAM", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "yaz"      { tok_ekle_lex("YAZ", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "ve"       { tok_ekle_lex("VE", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "veya"     { tok_ekle_lex("VEYA", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "degil"    { tok_ekle_lex("DEGIL", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "tuz"      { tok_ekle_lex("TUZ", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "ters"     { tok_ekle_lex("TERS", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "bos"      { tok_ekle_lex("BOS", kelime, _lex_satir, bas_kolon); devam; }
+
+            tok_ekle_lex("ID", kelime, _lex_satir, bas_kolon);
             devam;
         }
 
-        // String (cift tirnak)
-        eger k == "\"" {
-            degisken tok_satir = _lex_satir;
-            degisken tok_kolon = _lex_kolon;
+        // String Literali "..."
+        degisken TIRNAK = karakter_yap(34);
+        eger k == TIRNAK {
+            degisken bas_kolon = _lex_kolon;
             i = i + 1;
             _lex_kolon = _lex_kolon + 1;
-            degisken ham_metin = "";
-            iken i < boy ve kaynak[i] != "\"" {
-                // Escape sekansini ham olarak topla, sonra coz
-                eger kaynak[i] == "\\" ve i + 1 < boy {
-                    ham_metin = ham_metin + kaynak[i];
-                    ham_metin = ham_metin + kaynak[i + 1];
-                    i = i + 2;
-                    _lex_kolon = _lex_kolon + 2;
-                    devam;
-                }
-                eger kaynak[i] == "\n" {
-                    _lex_satir = _lex_satir + 1;
-                    _lex_kolon = 1;
-                }
-                ham_metin = ham_metin + kaynak[i];
+            degisken str_val = "";
+            iken i < boy ve kaynak[i] != TIRNAK {
+                str_val = str_val + kaynak[i];
                 i = i + 1;
                 _lex_kolon = _lex_kolon + 1;
             }
-            eger i < boy {
-                i = i + 1; // kapanan tirnak
-                _lex_kolon = _lex_kolon + 1;
-            } yoksa {
-                yaz "[HATA] Satir " + _lex_satir + ": Kapatilmamis string!";
-            }
-            tok_ekle_lex("STRING", escape_coz(ham_metin), tok_satir, tok_kolon);
-            devam;
-        }
-
-        // Tek tirnak string (karakter literali)
-        eger k == "'" {
-            degisken tok_satir = _lex_satir;
-            degisken tok_kolon = _lex_kolon;
             i = i + 1;
             _lex_kolon = _lex_kolon + 1;
-            degisken karakter = "";
-            iken i < boy ve kaynak[i] != "'" {
-                eger kaynak[i] == "\\" ve i + 1 < boy {
-                    karakter = karakter + kaynak[i];
-                    karakter = karakter + kaynak[i + 1];
-                    i = i + 2;
-                    _lex_kolon = _lex_kolon + 2;
-                    devam;
-                }
-                karakter = karakter + kaynak[i];
-                i = i + 1;
-                _lex_kolon = _lex_kolon + 1;
-            }
-            eger i < boy {
-                i = i + 1;
-                _lex_kolon = _lex_kolon + 1;
-            }
-            tok_ekle_lex("KARAKTER", escape_coz(karakter), tok_satir, tok_kolon);
+            tok_ekle_lex("STRING", str_val, _lex_satir, bas_kolon);
             devam;
         }
 
-        // Cift karakterli operatorler
+        // Operatörler
         degisken tok_satir = _lex_satir;
         degisken tok_kolon = _lex_kolon;
 
@@ -271,9 +139,10 @@ fonk tara(kaynak) {
             eger i + 1 < boy ve kaynak[i + 1] == "=" {
                 tok_ekle_lex("OP", "==", tok_satir, tok_kolon);
                 i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
+            } yoksa {
+                tok_ekle_lex("ESIT", "=", tok_satir, tok_kolon);
+                i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
             }
-            tok_ekle_lex("ESIT", "=", tok_satir, tok_kolon);
-            i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
         }
 
         eger k == "!" {
@@ -281,47 +150,50 @@ fonk tara(kaynak) {
                 tok_ekle_lex("OP", "!=", tok_satir, tok_kolon);
                 i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
             }
-            tok_ekle_lex("OP", "!", tok_satir, tok_kolon);
-            i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
         }
 
         eger k == "<" {
             eger i + 1 < boy ve kaynak[i + 1] == "=" {
                 tok_ekle_lex("OP", "<=", tok_satir, tok_kolon);
                 i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
+            } yoksa {
+                tok_ekle_lex("OP", "<", tok_satir, tok_kolon);
+                i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
             }
-            tok_ekle_lex("OP", "<", tok_satir, tok_kolon);
-            i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
         }
 
         eger k == ">" {
             eger i + 1 < boy ve kaynak[i + 1] == "=" {
                 tok_ekle_lex("OP", ">=", tok_satir, tok_kolon);
                 i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
+            } yoksa {
+                tok_ekle_lex("OP", ">", tok_satir, tok_kolon);
+                i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
             }
-            tok_ekle_lex("OP", ">", tok_satir, tok_kolon);
-            i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
         }
 
         eger k == "+" {
             eger i + 1 < boy ve kaynak[i + 1] == "=" {
                 tok_ekle_lex("OP", "+=", tok_satir, tok_kolon);
                 i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
+            } yoksa {
+                tok_ekle_lex("OP", "+", tok_satir, tok_kolon);
+                i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
             }
-            tok_ekle_lex("OP", "+", tok_satir, tok_kolon);
-            i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
         }
 
         eger k == "-" {
             eger i + 1 < boy ve kaynak[i + 1] == "=" {
                 tok_ekle_lex("OP", "-=", tok_satir, tok_kolon);
                 i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
+            } yoksa {
+                tok_ekle_lex("OP", "-", tok_satir, tok_kolon);
+                i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
             }
-            eger i + 1 < boy ve kaynak[i + 1] == ">" {
-                tok_ekle_lex("OK", "->", tok_satir, tok_kolon);
-                i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
-            }
-            tok_ekle_lex("OP", "-", tok_satir, tok_kolon);
+        }
+
+        eger k == "%" {
+            tok_ekle_lex("OP", "%", tok_satir, tok_kolon);
             i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
         }
 
@@ -329,69 +201,33 @@ fonk tara(kaynak) {
             eger i + 1 < boy ve kaynak[i + 1] == "=" {
                 tok_ekle_lex("OP", "*=", tok_satir, tok_kolon);
                 i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
+            } yoksa {
+                tok_ekle_lex("OP", "*", tok_satir, tok_kolon);
+                i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
             }
-            eger i + 1 < boy ve kaynak[i + 1] == "*" {
-                tok_ekle_lex("OP", "**", tok_satir, tok_kolon);
-                i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
-            }
-            tok_ekle_lex("OP", "*", tok_satir, tok_kolon);
-            i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
         }
 
         eger k == "/" {
             eger i + 1 < boy ve kaynak[i + 1] == "=" {
                 tok_ekle_lex("OP", "/=", tok_satir, tok_kolon);
                 i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
+            } yoksa {
+                tok_ekle_lex("OP", "/", tok_satir, tok_kolon);
+                i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
             }
-            tok_ekle_lex("OP", "/", tok_satir, tok_kolon);
-            i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
         }
 
-        eger k == "%" {
-            eger i + 1 < boy ve kaynak[i + 1] == "=" {
-                tok_ekle_lex("OP", "%=", tok_satir, tok_kolon);
-                i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
-            }
-            tok_ekle_lex("OP", "%", tok_satir, tok_kolon);
-            i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
-        }
-
-        eger k == "&" {
-            eger i + 1 < boy ve kaynak[i + 1] == "&" {
-                tok_ekle_lex("OP", "&&", tok_satir, tok_kolon);
-                i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
-            }
-            tok_ekle_lex("OP", "&", tok_satir, tok_kolon);
-            i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
-        }
-
-        eger k == "|" {
-            eger i + 1 < boy ve kaynak[i + 1] == "|" {
-                tok_ekle_lex("OP", "||", tok_satir, tok_kolon);
-                i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
-            }
-            tok_ekle_lex("OP", "|", tok_satir, tok_kolon);
-            i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
-        }
-
-        // Tek karakterli
+        // Noktalama ve Tek Karakterler
         eger k == ";" { tok_ekle_lex("NOKTA_VIRGUL", ";", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
-        // Kolon: ":" karakteri (ASCII 58)
-        eger uzunluk(k) == 1 ve k[0] == ":" { tok_ekle_lex("KOLON", ":", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
-        // Nokta: "." karakteri - sayi blogu disinda kalan noktalar
-        eger uzunluk(k) == 1 ve k[0] == "." { tok_ekle_lex("NOKTA", ".", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
         eger k == "," { tok_ekle_lex("VIRGUL", ",", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
+        eger k == "." { tok_ekle_lex("NOKTA", ".", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
         eger k == "(" { tok_ekle_lex("L_P", "(", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
         eger k == ")" { tok_ekle_lex("R_P", ")", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
         eger k == "{" { tok_ekle_lex("L_B", "{", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
         eger k == "}" { tok_ekle_lex("R_B", "}", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
         eger k == "[" { tok_ekle_lex("L_SQ", "[", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
         eger k == "]" { tok_ekle_lex("R_SQ", "]", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
-        eger k == "~" { tok_ekle_lex("OP", "~", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
-        eger k == "^" { tok_ekle_lex("OP", "^", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
 
-        // Bilinmeyen karakter - hatali ama devam et
-        yaz "[HATA] Satir " + _lex_satir + ", Kolon " + _lex_kolon + ": Bilinmeyen karakter '" + k + "'";
         i = i + 1;
         _lex_kolon = _lex_kolon + 1;
     }
@@ -399,18 +235,3 @@ fonk tara(kaynak) {
     tok_ekle_lex("EOF", "", _lex_satir, _lex_kolon);
     don _lexer_tokenlar;
 }
-
-// --- Test fonksiyonu ---
-fonk lexer_test() {
-    degisken kod = "degisken x = 3.14;\neger x > 2.0 {\n    yaz(\"merhaba dunya!\");\n}";
-    degisken tokenlar = tara(kod);
-    degisken j = 0;
-    iken j < uzunluk(tokenlar) {
-        degisken tok = tokenlar[j];
-        yaz tok[0] + " | " + tok[1] + " | satir:" + tok[2] + " kolon:" + tok[3];
-        j = j + 1;
-    }
-}
-// degisken test_kodu = "degisken x = 10;";
-// degisken sonuc = tara(test_kodu);
-// yaz sonuc; 

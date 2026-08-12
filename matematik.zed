@@ -15,13 +15,23 @@ fonk fakt(n) {
 }
 
 fonk kombinasyon(n, r) {
-    eger r > n { don 0; }
-    don fakt(n) / (fakt(r) * fakt(n - r));
+    degisken sonuc = 0;
+    eger r > n {
+        sonuc = 0;
+    } yoksa {
+        sonuc = fakt(n) / (fakt(r) * fakt(n - r));
+    }
+    don sonuc;
 }
 
 fonk permutasyon(n, r) {
-    eger r > n { don 0; }
-    don fakt(n) / fakt(n - r);
+    degisken sonuc = 0;
+    eger r > n {
+        sonuc = 0;
+    } yoksa {
+        sonuc = fakt(n) / fakt(n - r);
+    }
+    don sonuc;
 }
 
 fonk ebob(a, b) {

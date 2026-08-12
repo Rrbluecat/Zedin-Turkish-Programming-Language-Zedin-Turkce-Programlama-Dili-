@@ -1,0 +1,7 @@
+aktar "lexer.zed";
+aktar "parser.zed";
+aktar "asm_backend.zed";
+
+yaz "=== Zedin Native Derleyicisi Tek Parca ASM'ye Cevriliyor ===";
+zedin_asm_derle("lexer.zed", "zedin_native.s");
+yaz "=== zedin_native.s Basariyla Uretildi! ===";

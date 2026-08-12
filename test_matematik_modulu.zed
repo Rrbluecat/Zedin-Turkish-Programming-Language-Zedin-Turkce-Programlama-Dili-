@@ -1,0 +1,4 @@
+aktar "asm_backend.zed";
+
+yaz "=== Matematik Modülü Derleniyor ===";
+zedin_asm_derle("giris_matematik_test.zed", "matematik_test.s");

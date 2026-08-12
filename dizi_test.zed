@@ -1,0 +1,15 @@
+yaz("--- 1. Liste Tanımlama ve Indeks Okuma ---");
+degisken sayilar = [10, 20, 30];
+yaz(sayilar[0]);
+yaz(sayilar[1]);
+yaz(sayilar[2]);
+
+yaz("--- 2. Dinamik Ekleme (Heap) ---");
+ekle(sayilar, 40);
+yaz(sayilar[3]);
+yaz(uzunluk(sayilar));
+
+yaz("--- 3. Indeks Üzerinden Deger Degistirme ---");
+sayilar[1] = 99;
+yaz(sayilar[1]);
+yaz(sayilar[0] + sayilar[1]);

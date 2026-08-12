@@ -1,0 +1,2 @@
+aktar "asm_backend.zed";
+zedin_asm_derle("test_closure.zed", "test_closure.s");

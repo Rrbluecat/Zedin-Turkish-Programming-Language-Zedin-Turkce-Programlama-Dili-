@@ -1,0 +1,11 @@
+degisken m1 = "zedin";
+degisken m2 = "zedin";
+
+yaz "Uzunluk testi:";
+yaz uzunluk(m1);
+
+yaz "Karakter esitlik testi (z == z):";
+yaz m1[0] == m2[0];
+
+yaz "Karakter farklilik testi (z != z):";
+yaz m1[0] != m2[0];

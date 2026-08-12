@@ -1,0 +1,5 @@
+aktar "lexer.zed";
+degisken kelime = "r";
+yaz kelime == "kir";
+yaz kelime == "degisken";
+yaz kelime == "r";

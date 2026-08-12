@@ -1,0 +1,2605 @@
+// ============================================================
+// Hata_Yonetim.zed - Zedin Hata Yonetim ve Debug Modulu
+// Kullanim: aktar "Hata_Yonetim.zed";
+// ============================================================
+
+// --- SONUC SARMALAYICILAR ---
+
+// Guvenlice bir islemi dener, hata donerse hata() sarar
+fonk guvenli_bol(a, b) {
+    eger b == 0 {
+        don hata("[BolmeHatasi] Sifira bolme: " + a + " / " + b);
+    }
+    don tamam(a / b);
+}
+
+fonk guvenli_kok(x) {
+    eger x < 0 {
+        don hata("[KokHatasi] Negatif sayi: " + x);
+    }
+    don tamam(kok(x));
+}
+
+fonk guvenli_indeks(liste, i) {
+    eger i < 0 {
+        don hata("[IndeksHatasi] Negatif indeks: " + i);
+    }
+    eger i >= uzunluk(liste) {
+        don hata("[IndeksHatasi] Sinir disi: " + i + " (uzunluk: " + uzunluk(liste) + ")");
+    }
+    don tamam(liste[i]);
+}
+
+fonk guvenli_sayiya(metin) {
+    degisken s = sayiya(metin);
+    eger s == 0 {
+        eger metin != "0" {
+            don hata("[DonusumHatasi] Sayiya donusturulemedi: '" + metin + "'");
+        }
+    }
+    don tamam(s);
+}
+
+// --- DEBUG ARACLARI ---
+
+// Degiskenin adini ve degerini yazdirir
+fonk debug(ad, deger) {
+    yaz "[DEBUG] " + ad + " = " + deger + " (" + tip(deger) + ")";
+}
+
+// Bir sonucu detayli yazdirir
+fonk debug_sonuc(ad, sonuc) {
+    eger tamam_mi(sonuc) {
+        yaz "[TAMAM] " + ad + " => " + deger_al(sonuc);
+    } yoksa {
+        yaz "[HATA]  " + ad + " => " + mesaj_al(sonuc);
+    }
+}
+
+// Kosul dogru degilse hata mesaji yazdirir
+fonk assert_et(kosul, mesaj) {
+    eger kosul {
+        yaz "[ASSERT OK] " + mesaj;
+        don tamam(mesaj);
+    }
+    yaz "[ASSERT BASARISIZ] " + mesaj;
+    don hata("[AssertHatasi] " + mesaj);
+}
+
+// Iki degeri karsilastirir, esit degilse hata verir
+fonk esit_mi_assert(beklenen, gercek, mesaj) {
+    eger beklenen == gercek {
+        yaz "[ESIT OK] " + mesaj + " => " + gercek;
+        don tamam(gercek);
+    }
+    yaz "[ESIT DEGIL] " + mesaj + " | Beklenen: " + beklenen + " | Gercek: " + gercek;
+    don hata("[EsitlikHatasi] Beklenen: " + beklenen + " Gercek: " + gercek);
+}
+
+// Bir sonuc zinciri - tamam ise devam, hata ise dur
+fonk zincir(sonuc, mesaj) {
+    eger hata_mi(sonuc) {
+        yaz "[ZINCIR KOPTU] " + mesaj + " => " + mesaj_al(sonuc);
+        don sonuc;
+    }
+    don sonuc;
+}
+
+// Tum test sonuclarini ozetler
+degisken _test_basarili = 0;
+degisken _test_basarisiz = 0;
+
+fonk test_et(isim, sonuc) {
+    eger tamam_mi(sonuc) {
+        yaz "[TEST GECTI] " + isim;
+        _test_basarili = _test_basarili + 1;
+    } yoksa {
+        yaz "[TEST KALDI] " + isim + " => " + mesaj_al(sonuc);
+        _test_basarisiz = _test_basarisiz + 1;
+    }
+}
+
+fonk test_ozet() {
+    yaz "==============================";
+    yaz "TEST OZETI";
+    yaz "==============================";
+    yaz "Gecen : " + _test_basarili;
+    yaz "Kalan : " + _test_basarisiz;
+    yaz "Toplam: " + (_test_basarili + _test_basarisiz);
+    eger _test_basarisiz == 0 {
+        yaz "Tum testler gecti!";
+        don tamam("ok");
+    }
+    yaz "Bazi testler basarisiz!";
+    don hata("test_basarisiz");
+}
+
+// ============================================================
+// sistem.zed - Zedin Sistem Modülü v1.0
+// Kullanım: aktar "sistem";
+// ============================================================
+
+// Komut çalıştır ve çıktısını al
+fonk calistir(komut) {
+    degisken sonuc = komut_calistir(komut);
+    eger hata_mi(sonuc) {
+        don "";
+    }
+    don deger_al(sonuc);
+}
+
+// Ortam değişkeni oku
+fonk env(ad) {
+    don ortam_degiskeni(ad);
+}
+
+// HOME klasörü
+fonk ev_klasoru() {
+    don ortam_degiskeni("HOME");
+}
+
+// Kullanıcı adı
+fonk kullanici() {
+    don ortam_degiskeni("USER");
+}
+
+// Mevcut klasör
+fonk klasor() {
+    degisken sonuc = komut_calistir("pwd");
+    eger tamam_mi(sonuc) {
+        degisken yol = deger_al(sonuc);
+        // Son \n karakterini kaldir
+        eger uzunluk(yol) > 0 {
+            eger yol[uzunluk(yol) - 1] == "\n" {
+                degisken temiz = "";
+                degisken i = 0;
+                iken i < uzunluk(yol) - 1 {
+                    temiz = temiz + yol[i];
+                    i = i + 1;
+                }
+                don temiz;
+            }
+        }
+        don yol;
+    }
+    don "";
+}
+
+// Dosya listesi
+fonk dosyalar(klasor_yolu) {
+    degisken sonuc = komut_calistir("ls " + klasor_yolu);
+    eger hata_mi(sonuc) { don []; }
+    degisken cikti = deger_al(sonuc);
+    degisken liste = [];
+    degisken satir = "";
+    degisken i = 0;
+    iken i < uzunluk(cikti) {
+        eger cikti[i] == "\n" {
+            eger uzunluk(satir) > 0 {
+                ekle(liste, satir);
+                satir = "";
+            }
+        } yoksa {
+            satir = satir + cikti[i];
+        }
+        i = i + 1;
+    }
+    don liste;
+}
+
+// Platform bilgisi
+fonk platform() {
+    degisken sonuc = komut_calistir("uname -s");
+    eger tamam_mi(sonuc) { don deger_al(sonuc); }
+    don "bilinmiyor";
+}
+
+// Bellek kullanımı (MB)
+fonk bellek_kullanimi() {
+    degisken sonuc = komut_calistir("free -m | awk 'NR==2{print $3}'");
+    eger tamam_mi(sonuc) { don sayiya(deger_al(sonuc)); }
+    don 0;
+}
+
+// Uyku (saniye)
+fonk uyku(saniye) {
+    komut_calistir("sleep " + metine(saniye));
+}
+
+// ============================================================
+// matematik.zed - Zedin Matematik Modülü v1.0
+// Kullanım: aktar "matematik";
+// ============================================================
+
+fonk derece_radyan(derece) { don derece * pi / 180; }
+fonk radyan_derece(radyan) { don radyan * 180 / pi; }
+fonk sind(derece) { don sin(derece_radyan(derece)); }
+fonk cosd(derece) { don cos(derece_radyan(derece)); }
+fonk tand(derece) { don tan(derece_radyan(derece)); }
+
+fonk fakt(n) {
+    eger n <= 1 { don 1; }
+    don n * fakt(n - 1);
+}
+
+fonk kombinasyon(n, r) {
+    degisken sonuc = 0;
+    eger r > n {
+        sonuc = 0;
+    } yoksa {
+        sonuc = fakt(n) / (fakt(r) * fakt(n - r));
+    }
+    don sonuc;
+}
+
+fonk permutasyon(n, r) {
+    degisken sonuc = 0;
+    eger r >= n {
+        sonuc = 0;
+    } yoksa {
+        sonuc = fakt(n) / fakt(n - r);
+    }
+    don sonuc;
+}
+
+fonk ebob(a, b) {
+    iken b != 0 {
+        degisken tmp = b;
+        b = a % b;
+        a = tmp;
+    }
+    don a;
+}
+
+fonk ekok(a, b) {
+    don (a * b) / ebob(a, b);
+}
+
+fonk asal_mi(n) {
+    eger n < 2 { don ters; }
+    eger n == 2 { don tuz; }
+    eger n % 2 == 0 { don ters; }
+    degisken i = 3;
+    iken i * i <= n {
+        eger n % i == 0 { don ters; }
+        i = i + 2;
+    }
+    don tuz;
+}
+
+fonk asallar(n) {
+    degisken sonuc = [];
+    degisken i = 2;
+    iken i <= n {
+        eger asal_mi(i) { ekle(sonuc, i); }
+        i = i + 1;
+    }
+    don sonuc;
+}
+
+fonk fib(n) {
+    eger n <= 0 { don 0; }
+    eger n == 1 { don 1; }
+    degisken a = 0;
+    degisken b = 1;
+    degisken i = 2;
+    iken i <= n {
+        degisken tmp = a + b;
+        a = b;
+        b = tmp;
+        i = i + 1;
+    }
+    don b;
+}
+
+fonk ondalik_yuvarla(sayi, basamak) {
+    degisken carpan = us(10, basamak);
+    don yuvarla(sayi * carpan) / carpan;
+}
+
+fonk hipotenus(a, b) { don kok(a * a + b * b); }
+
+fonk mesafe(x1, y1, x2, y2) {
+    don hipotenus(x2 - x1, y2 - y1);
+}
+
+fonk lerp(a, b, t) { don a + (b - a) * t; }
+
+fonk sinirla(sayi, min, maks) {
+    eger sayi < min { don min; }
+    eger sayi > maks { don maks; }
+    don sayi;
+}
+
+fonk isaret(sayi) {
+    eger sayi > 0 { don 1; }
+    eger sayi < 0 { don -1; }
+    don 0;
+}
+
+fonk sigma(bas, son) {
+    degisken toplam = 0;
+    degisken i = bas;
+    iken i <= son { toplam = toplam + i; i = i + 1; }
+    don toplam;
+}
+
+// ============================================================
+// stdlib.zed - Zedin Standart Kutuphanesi
+// ============================================================
+
+fonk bul(metin, aranan) {
+    degisken m_boy = uzunluk(metin);
+    degisken a_boy = uzunluk(aranan);
+    eger a_boy == 0 { don 0; }
+    eger a_boy > m_boy { don -1; }
+    degisken i = 0;
+    iken i <= m_boy - a_boy {
+        degisken j = 0;
+        degisken eslesti = tuz;
+        iken j < a_boy {
+            eger metin[i + j] != aranan[j] { eslesti = ters; }
+            j = j + 1;
+        }
+        eger eslesti { don i; }
+        i = i + 1;
+    }
+    don -1;
+}
+
+fonk alt_metin(metin, baslangic, bitis) {
+    degisken sonuc = "";
+    degisken m_boy = uzunluk(metin);
+    degisken i = baslangic;
+    iken i < bitis ve i < m_boy {
+        sonuc = sonuc + metin[i];
+        i = i + 1;
+    }
+    don sonuc;
+}
+
+fonk icerir(metin, aranan) {
+    don bul(metin, aranan) >= 0;
+}
+
+fonk ile_baslar(metin, on_ek) {
+    degisken m_boy = uzunluk(metin);
+    degisken o_boy = uzunluk(on_ek);
+    eger o_boy > m_boy { don ters; }
+    degisken i = 0;
+    iken i < o_boy {
+        eger metin[i] != on_ek[i] { don ters; }
+        i = i + 1;
+    }
+    don tuz;
+}
+
+fonk ile_biter(metin, son_ek) {
+    degisken m_boy = uzunluk(metin);
+    degisken s_boy = uzunluk(son_ek);
+    eger s_boy > m_boy { don ters; }
+    degisken fark = m_boy - s_boy;
+    degisken i = 0;
+    iken i < s_boy {
+        eger metin[fark + i] != son_ek[i] { don ters; }
+        i = i + 1;
+    }
+    don tuz;
+}
+
+fonk parcala(metin, ayirici) {
+    degisken sonuc = [];
+    degisken parca = "";
+    degisken m_boy = uzunluk(metin);
+    degisken a_boy = uzunluk(ayirici);
+    degisken i = 0;
+    iken i < m_boy {
+        eger a_boy == 1 ve metin[i] == ayirici {
+            ekle(sonuc, parca);
+            parca = "";
+            i = i + 1;
+            devam;
+        }
+        eger a_boy > 1 ve i + a_boy <= m_boy {
+            degisken eslesti = tuz;
+            degisken j = 0;
+            iken j < a_boy {
+                eger metin[i + j] != ayirici[j] { eslesti = ters; }
+                j = j + 1;
+            }
+            eger eslesti {
+                ekle(sonuc, parca);
+                parca = "";
+                i = i + a_boy;
+                devam;
+            }
+        }
+        parca = parca + metin[i];
+        i = i + 1;
+    }
+    ekle(sonuc, parca);
+    don sonuc;
+}
+
+// ============================================================
+// liste.zed - Zedin Liste Modülü v1.0
+// Kullanım: aktar "liste";
+// ============================================================
+
+// Listeyi tersine çevirir
+fonk tersine(lst) {
+    degisken sonuc = [];
+    degisken i = uzunluk(lst) - 1;
+    iken i >= 0 {
+        ekle(sonuc, lst[i]);
+        i = i - 1;
+    }
+    don sonuc;
+}
+
+// Eleman listede var mı
+fonk iceriyor_mu(lst, eleman) {
+    degisken i = 0;
+    iken i < uzunluk(lst) {
+        eger lst[i] == eleman {
+            don tuz;
+        }
+        i = i + 1;
+    }
+    don ters;
+}
+
+// Elamanin indeksini bul (-1 = bulunamadi)
+fonk indeks_bul(lst, eleman) {
+    degisken i = 0;
+    iken i < uzunluk(lst) {
+        eger lst[i] == eleman {
+            don i;
+        }
+        i = i + 1;
+    }
+    don -1;
+}
+
+// Tüm sayisal elemanlari topla
+fonk topla_liste(lst) {
+    degisken toplam = 0;
+    degisken i = 0;
+    iken i < uzunluk(lst) {
+        toplam = toplam + lst[i];
+        i = i + 1;
+    }
+    don toplam;
+}
+
+// Ortalama hesapla
+fonk ortalama(lst) {
+    eger uzunluk(lst) == 0 {
+        don 0;
+    }
+    don topla_liste(lst) / uzunluk(lst);
+}
+
+// En büyük eleman
+fonk en_buyuk(lst) {
+    eger uzunluk(lst) == 0 { don 0; }
+    degisken maks = lst[0];
+    degisken i = 1;
+    iken i < uzunluk(lst) {
+        eger lst[i] > maks {
+            maks = lst[i];
+        }
+        i = i + 1;
+    }
+    don maks;
+}
+
+// En küçük eleman
+fonk en_kucuk(lst) {
+    eger uzunluk(lst) == 0 { don 0; }
+    degisken min = lst[0];
+    degisken i = 1;
+    iken i < uzunluk(lst) {
+        eger lst[i] < min {
+            min = lst[i];
+        }
+        i = i + 1;
+    }
+    don min;
+}
+
+// Listeyi dilimlere böl (slice)
+fonk dilim(lst, baslangic, bitis) {
+    degisken sonuc = [];
+    degisken i = baslangic;
+    iken i < bitis ve i < uzunluk(lst) {
+        ekle(sonuc, lst[i]);
+        i = i + 1;
+    }
+    don sonuc;
+}
+
+// İki listeyi birleştir
+fonk birlestir(lst1, lst2) {
+    degisken sonuc = [];
+    degisken i = 0;
+    iken i < uzunluk(lst1) {
+        ekle(sonuc, lst1[i]);
+        i = i + 1;
+    }
+    degisken j = 0;
+    iken j < uzunluk(lst2) {
+        ekle(sonuc, lst2[j]);
+        j = j + 1;
+    }
+    don sonuc;
+}
+
+// Listeyi tekrarlama (n kez)
+fonk tekrarla(lst, n) {
+    degisken sonuc = [];
+    degisken t = 0;
+    iken t < n {
+        degisken i = 0;
+        iken i < uzunluk(lst) {
+            ekle(sonuc, lst[i]);
+            i = i + 1;
+        }
+        t = t + 1;
+    }
+    don sonuc;
+}
+
+// Belirli degerden buyuk elemanlari al
+fonk buyukler(lst, esik) {
+    degisken sonuc = [];
+    degisken i = 0;
+    iken i < uzunluk(lst) {
+        eger lst[i] > esik {
+            ekle(sonuc, lst[i]);
+        }
+        i = i + 1;
+    }
+    don sonuc;
+}
+
+// Belirli degerden kucuk elemanlari al
+fonk kucukler(lst, esik) {
+    degisken sonuc = [];
+    degisken i = 0;
+    iken i < uzunluk(lst) {
+        eger lst[i] < esik {
+            ekle(sonuc, lst[i]);
+        }
+        i = i + 1;
+    }
+    don sonuc;
+}
+
+// Tekrar edenleri kaldir (unique)
+fonk tekrarsiz(lst) {
+    degisken sonuc = [];
+    degisken i = 0;
+    iken i < uzunluk(lst) {
+        eger iceriyor_mu(sonuc, lst[i]) == ters {
+            ekle(sonuc, lst[i]);
+        }
+        i = i + 1;
+    }
+    don sonuc;
+}
+
+// Listeyi yazdir
+fonk liste_yaz(lst) {
+    degisken cikti = "[";
+    degisken i = 0;
+    iken i < uzunluk(lst) {
+        cikti = cikti + lst[i];
+        eger i < uzunluk(lst) - 1 {
+            cikti = cikti + ", ";
+        }
+        i = i + 1;
+    }
+    cikti = cikti + "]";
+    yaz cikti;
+}
+
+// Bubble sort (kucukten buyuge)
+fonk sirala(lst) {
+    degisken n = uzunluk(lst);
+    degisken sonuc = [];
+    degisken k = 0;
+    iken k < n {
+        ekle(sonuc, lst[k]);
+        k = k + 1;
+    }
+    degisken i = 0;
+    iken i < n {
+        degisken j = 0;
+        iken j < n - i - 1 {
+            eger sonuc[j] > sonuc[j + 1] {
+                degisken tmp = sonuc[j];
+                sonuc[j] = sonuc[j + 1];
+                sonuc[j + 1] = tmp;
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    don sonuc;
+}
+
+// Buyukten kucuge sirala
+fonk sirala_ters(lst) {
+    don tersine(sirala(lst));
+}
+
+// Aralik olustur (range)
+fonk aralik(baslangic, bitis) {
+    degisken sonuc = [];
+    degisken i = baslangic;
+    iken i < bitis {
+        ekle(sonuc, i);
+        i = i + 1;
+    }
+    don sonuc;
+}
+
+// Adimli aralik
+fonk aralik_adim(baslangic, bitis, adim) {
+    degisken sonuc = [];
+    degisken i = baslangic;
+    iken i < bitis {
+        ekle(sonuc, i);
+        i = i + adim;
+    }
+    don sonuc;
+}
+
+// ============================================================
+// dosya.zed - Zedin Dosya I/O Modülü v1.0
+// Kullanım: aktar "dosya";
+// ============================================================
+
+// Dosyayı oku, içeriği döndür
+fonk dosya_oku(yol) {
+    degisken sonuc = oku_dosya(yol);
+    eger hata_mi(sonuc) {
+        yaz "[HATA] Dosya okunamadi: " + yol;
+        don "";
+    }
+    don deger_al(sonuc);
+}
+
+// Dosyaya yaz (üstüne yaz)
+fonk dosya_yaz(yol, icerik) {
+    degisken sonuc = yaz_dosya(yol, icerik);
+    eger hata_mi(sonuc) {
+        yaz "[HATA] Dosya yazilamadi: " + yol;
+        don ters;
+    }
+    don tuz;
+}
+
+// Dosyaya satır ekle (append)
+fonk dosya_ekle(yol, satir) {
+    degisken mevcut = dosya_oku(yol);
+    eger uzunluk(mevcut) > 0 {
+        eger mevcut[uzunluk(mevcut) - 1] != "\n" {
+            mevcut = mevcut + "\n";
+        }
+    }
+    don dosya_yaz(yol, mevcut + satir + "\n");
+}
+
+// Dosyayı satır satır oku
+fonk dosya_satirlar(yol) {
+    degisken icerik = dosya_oku(yol);
+    eger uzunluk(icerik) == 0 { don []; }
+    degisken satirlar = [];
+    degisken satir = "";
+    degisken i = 0;
+    iken i < uzunluk(icerik) {
+        eger icerik[i] == "\n" {
+            ekle(satirlar, satir);
+            satir = "";
+        } yoksa {
+            satir = satir + icerik[i];
+        }
+        i = i + 1;
+    }
+    eger uzunluk(satir) > 0 {
+        ekle(satirlar, satir);
+    }
+    don satirlar;
+}
+
+// Dosya var mı kontrolu
+fonk dosya_var_mi(yol) {
+    degisken sonuc = oku_dosya(yol);
+    don tamam_mi(sonuc);
+}
+
+// Dosyayi sil (stub)
+fonk dosya_sil(yol) {
+    yaz "[UYARI] dosya_sil henuz desteklenmiyor";
+    don ters;
+}
+
+// Satir sayisini say
+fonk dosya_satir_say(yol) {
+    don uzunluk(dosya_satirlar(yol));
+}
+
+// Belirli satiri oku (0'dan baslar)
+fonk dosya_satir_oku(yol, satir_no) {
+    degisken satirlar = dosya_satirlar(yol);
+    eger satir_no >= uzunluk(satirlar) {
+        don "";
+    }
+    don satirlar[satir_no];
+}
+
+// CSV dosyasini oku (liste listesi doner)
+fonk csv_oku(yol, ayirac) {
+    degisken satirlar = dosya_satirlar(yol);
+    degisken sonuc = [];
+    degisken i = 0;
+    iken i < uzunluk(satirlar) {
+        degisken satir = satirlar[i];
+        degisken parcalar = [];
+        degisken parca = "";
+        degisken j = 0;
+        iken j < uzunluk(satir) {
+            eger satir[j] == ayirac {
+                ekle(parcalar, parca);
+                parca = "";
+            } yoksa {
+                parca = parca + satir[j];
+            }
+            j = j + 1;
+        }
+        ekle(parcalar, parca);
+        ekle(sonuc, parcalar);
+        i = i + 1;
+    }
+    don sonuc;
+}
+
+// Listeyi CSV olarak kaydet
+fonk csv_yaz(yol, veriler, ayirac) {
+    degisken icerik = "";
+    degisken i = 0;
+    iken i < uzunluk(veriler) {
+        degisken satir = veriler[i];
+        degisken satir_metin = "";
+        degisken j = 0;
+        iken j < uzunluk(satir) {
+            satir_metin = satir_metin + metine(satir[j]);
+            eger j < uzunluk(satir) - 1 {
+                satir_metin = satir_metin + ayirac;
+            }
+            j = j + 1;
+        }
+        icerik = icerik + satir_metin + "\n";
+        i = i + 1;
+    }
+    don dosya_yaz(yol, icerik);
+}
+
+// ============================================================
+// ag.zed - Zedin Ağ Modülü v1.0
+// Kullanım: aktar "ag";
+// ============================================================
+
+// HTTP GET isteği
+fonk get(url) {
+    degisken sonuc = http_get(url);
+    eger hata_mi(sonuc) {
+        yaz "[AG HATA] GET başarısız: " + url;
+        don "";
+    }
+    don deger_al(sonuc);
+}
+
+// HTTP POST isteği (JSON)
+fonk post(url, veri) {
+    degisken sonuc = http_post(url, veri);
+    eger hata_mi(sonuc) {
+        yaz "[AG HATA] POST başarısız: " + url;
+        don "";
+    }
+    don deger_al(sonuc);
+}
+
+// JSON API çağrısı - GET ve parse
+fonk api_get(url) {
+    aktar "json.zed";
+    degisken cevap = get(url);
+    eger uzunluk(cevap) == 0 { don []; }
+    don json_parse(cevap);
+}
+
+// JSON API çağrısı - POST ve parse
+fonk api_post(url, veri_listesi) {
+    aktar "json.zed";
+    degisken json_veri = json_uret(veri_listesi);
+    degisken cevap = post(url, json_veri);
+    eger uzunluk(cevap) == 0 { don []; }
+    don json_parse(cevap);
+}
+
+// URL'den dosya indir
+fonk indir(url, hedef_dosya) {
+    degisken komut = "curl -s --max-time 30 -o " + hedef_dosya + " \"" + url + "\"";
+    degisken sonuc = komut_calistir(komut);
+    don tamam_mi(sonuc);
+}
+
+// Ping at (host ulaşılabilir mi)
+fonk ping(host) {
+    degisken sonuc = komut_calistir("ping -c 1 -W 2 " + host + " 2>&1");
+    eger hata_mi(sonuc) { don ters; }
+    degisken cikti = deger_al(sonuc);
+    don icerir(cikti, "1 received");
+}
+
+// IP adresini bul
+fonk ip_bul(host) {
+    degisken sonuc = komut_calistir("host " + host + " 2>&1 | head -1");
+    eger tamam_mi(sonuc) { don deger_al(sonuc); }
+    don "";
+}
+
+// Public IP'yi öğren
+fonk public_ip() {
+    don get("https://api.ipify.org");
+}
+
+// Basit URL parse - protocol, host, path ayır
+fonk url_parse(url) {
+    degisken protokol = "";
+    degisken host = "";
+    degisken yol = "/";
+
+    degisken pp = bul(url, "://");
+    eger pp >= 0 {
+        degisken i = 0;
+        iken i < pp {
+            protokol = protokol + url[i];
+            i = i + 1;
+        }
+        degisken geri = pp + 3;
+        degisken slash = bul(alt_metin(url, geri, uzunluk(url)), "/");
+        eger slash >= 0 {
+            host = alt_metin(url, geri, geri + slash);
+            yol = alt_metin(url, geri + slash, uzunluk(url));
+        } yoksa {
+            host = alt_metin(url, geri, uzunluk(url));
+        }
+    }
+    don [["protokol", protokol], ["host", host], ["yol", yol]];
+}
+
+// ============================================================
+// lexer.zed - Zedin Self-hosting Lexer
+// ============================================================
+
+degisken _lex_satir = 1;
+degisken _lex_kolon = 1;
+degisken _lexer_tokenlar = [];
+
+fonk tok_ekle_lex(tip, deger, satir, kolon) {
+    ekle(_lexer_tokenlar, [tip, deger, satir, kolon]);
+}
+
+fonk harf_mi(c) {
+    degisken h = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_ÇçĞğİıÖöŞşÜü";
+    degisken i = 0;
+    iken i < uzunluk(h) {
+        eger c == h[i] { don 1; }
+        i = i + 1;
+    }
+    don 0;
+}
+
+fonk rakam_mi(c) {
+    degisken r = "0123456789";
+    degisken i = 0;
+    iken i < uzunluk(r) {
+        eger c == r[i] { don 1; }
+        i = i + 1;
+    }
+    don 0;
+}
+
+fonk tara(kaynak) {
+    _lexer_tokenlar = [];
+    _lex_satir = 1;
+    _lex_kolon = 1;
+
+    degisken boy = uzunluk(kaynak);
+    degisken i = 0;
+
+    iken i < boy {
+        degisken k = kaynak[i];
+
+        // Yeni satir
+        eger k == "\n" {
+            _lex_satir = _lex_satir + 1;
+            _lex_kolon = 1;
+            i = i + 1;
+            devam;
+        }
+
+        // Bosluklar
+        eger k == " " veya k == "\t" veya char_kodu(k) == 13 {
+            _lex_kolon = _lex_kolon + 1;
+            i = i + 1;
+            devam;
+        }
+
+        // Yorumlar: // ...
+        eger k == "/" ve i + 1 < boy ve kaynak[i + 1] == "/" {
+            iken i < boy ve kaynak[i] != "\n" {
+                i = i + 1;
+            }
+            devam;
+        }
+
+        // Rakam / Sayi
+        eger rakam_mi(k) {
+            degisken bas_kolon = _lex_kolon;
+            degisken s = "";
+            degisken ondali = 0;
+            iken i < boy ve (rakam_mi(kaynak[i]) veya kaynak[i] == ".") {
+                eger kaynak[i] == "." { ondali = 1; }
+                s = s + kaynak[i];
+                i = i + 1;
+                _lex_kolon = _lex_kolon + 1;
+            }
+            eger ondali == 1 {
+                tok_ekle_lex("SAYI_ONDALI", s, _lex_satir, bas_kolon);
+            } yoksa {
+                tok_ekle_lex("SAYI", s, _lex_satir, bas_kolon);
+            }
+            devam;
+        }
+
+        // Tanimlayici veya Anahtar Kelime
+        eger harf_mi(k) {
+            degisken bas_kolon = _lex_kolon;
+            degisken kelime = "";
+            iken i < boy ve (harf_mi(kaynak[i]) veya rakam_mi(kaynak[i])) {
+                kelime = kelime + kaynak[i];
+                i = i + 1;
+                _lex_kolon = _lex_kolon + 1;
+            }
+
+            eger kelime == "degisken" { tok_ekle_lex("DEGISKEN", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "fonk"     { tok_ekle_lex("FONK", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "eger"     { tok_ekle_lex("EGER", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "yoksa"    { tok_ekle_lex("YOKSA", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "iken"     { tok_ekle_lex("IKEN", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "don"      { tok_ekle_lex("DON", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "kir"      { tok_ekle_lex("KIR", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "devam"    { tok_ekle_lex("DEVAM", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "yaz"      { tok_ekle_lex("YAZ", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "ve"       { tok_ekle_lex("VE", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "veya"     { tok_ekle_lex("VEYA", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "degil"    { tok_ekle_lex("DEGIL", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "tuz"      { tok_ekle_lex("TUZ", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "ters"     { tok_ekle_lex("TERS", kelime, _lex_satir, bas_kolon); devam; }
+            eger kelime == "bos"      { tok_ekle_lex("BOS", kelime, _lex_satir, bas_kolon); devam; }
+
+            tok_ekle_lex("ID", kelime, _lex_satir, bas_kolon);
+            devam;
+        }
+
+        // String Literali "..."
+        eger k == "\"" {
+            degisken bas_kolon = _lex_kolon;
+            i = i + 1;
+            _lex_kolon = _lex_kolon + 1;
+            degisken str_val = "";
+            iken i < boy ve kaynak[i] != "\"" {
+                str_val = str_val + kaynak[i];
+                i = i + 1;
+                _lex_kolon = _lex_kolon + 1;
+            }
+            i = i + 1;
+            _lex_kolon = _lex_kolon + 1;
+            tok_ekle_lex("STRING", str_val, _lex_satir, bas_kolon);
+            devam;
+        }
+
+        // Operatörler
+        degisken tok_satir = _lex_satir;
+        degisken tok_kolon = _lex_kolon;
+
+        eger k == "=" {
+            eger i + 1 < boy ve kaynak[i + 1] == "=" {
+                tok_ekle_lex("OP", "==", tok_satir, tok_kolon);
+                i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
+            } yoksa {
+                tok_ekle_lex("ESIT", "=", tok_satir, tok_kolon);
+                i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
+            }
+        }
+
+        eger k == "!" {
+            eger i + 1 < boy ve kaynak[i + 1] == "=" {
+                tok_ekle_lex("OP", "!=", tok_satir, tok_kolon);
+                i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
+            }
+        }
+
+        eger k == "<" {
+            eger i + 1 < boy ve kaynak[i + 1] == "=" {
+                tok_ekle_lex("OP", "<=", tok_satir, tok_kolon);
+                i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
+            } yoksa {
+                tok_ekle_lex("OP", "<", tok_satir, tok_kolon);
+                i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
+            }
+        }
+
+        eger k == ">" {
+            eger i + 1 < boy ve kaynak[i + 1] == "=" {
+                tok_ekle_lex("OP", ">=", tok_satir, tok_kolon);
+                i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
+            } yoksa {
+                tok_ekle_lex("OP", ">", tok_satir, tok_kolon);
+                i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
+            }
+        }
+
+        eger k == "+" {
+            eger i + 1 < boy ve kaynak[i + 1] == "=" {
+                tok_ekle_lex("OP", "+=", tok_satir, tok_kolon);
+                i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
+            } yoksa {
+                tok_ekle_lex("OP", "+", tok_satir, tok_kolon);
+                i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
+            }
+        }
+
+        eger k == "-" {
+            eger i + 1 < boy ve kaynak[i + 1] == "=" {
+                tok_ekle_lex("OP", "-=", tok_satir, tok_kolon);
+                i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
+            } yoksa {
+                tok_ekle_lex("OP", "-", tok_satir, tok_kolon);
+                i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
+            }
+        }
+
+        eger k == "%" {
+            tok_ekle_lex("OP", "%", tok_satir, tok_kolon);
+            i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
+        }
+
+        eger k == "*" {
+            eger i + 1 < boy ve kaynak[i + 1] == "=" {
+                tok_ekle_lex("OP", "*=", tok_satir, tok_kolon);
+                i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
+            } yoksa {
+                tok_ekle_lex("OP", "*", tok_satir, tok_kolon);
+                i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
+            }
+        }
+
+        eger k == "/" {
+            eger i + 1 < boy ve kaynak[i + 1] == "=" {
+                tok_ekle_lex("OP", "/=", tok_satir, tok_kolon);
+                i = i + 2; _lex_kolon = _lex_kolon + 2; devam;
+            } yoksa {
+                tok_ekle_lex("OP", "/", tok_satir, tok_kolon);
+                i = i + 1; _lex_kolon = _lex_kolon + 1; devam;
+            }
+        }
+
+        // Noktalama ve Tek Karakterler
+        eger k == ";" { tok_ekle_lex("NOKTA_VIRGUL", ";", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
+        eger k == "," { tok_ekle_lex("VIRGUL", ",", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
+        eger k == "." { tok_ekle_lex("NOKTA", ".", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
+        eger k == "(" { tok_ekle_lex("L_P", "(", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
+        eger k == ")" { tok_ekle_lex("R_P", ")", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
+        eger k == "{" { tok_ekle_lex("L_B", "{", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
+        eger k == "}" { tok_ekle_lex("R_B", "}", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
+        eger k == "[" { tok_ekle_lex("L_SQ", "[", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
+        eger k == "]" { tok_ekle_lex("R_SQ", "]", tok_satir, tok_kolon); i = i + 1; _lex_kolon = _lex_kolon + 1; devam; }
+
+        i = i + 1;
+        _lex_kolon = _lex_kolon + 1;
+    }
+
+    tok_ekle_lex("EOF", "", _lex_satir, _lex_kolon);
+    don _lexer_tokenlar;
+}
+
+degisken _hata_sayisi = 0;
+degisken _p_tok = [];
+degisken _p_pos = 0;
+
+fonk p_simdiki() {
+    eger _p_pos >= uzunluk(_p_tok) {
+        don ["EOF", "EOF", 0, 0];
+    }
+    don _p_tok[_p_pos];
+}
+
+fonk p_tip() { degisken s = p_simdiki(); don s[0]; }
+fonk p_deger() { degisken s = p_simdiki(); don s[1]; }
+fonk p_satir() { degisken s = p_simdiki(); don s[2]; }
+
+fonk p_ilerle() { _p_pos = _p_pos + 1; }
+
+fonk p_esles(beklenen) {
+    eger p_tip() == beklenen {
+        degisken d = p_deger();
+        p_ilerle();
+        don d;
+    }
+    yaz "[PARSER HATA] Satir " + metine(p_satir()) + " (Pos " + metine(_p_pos) + "): Beklenen '" + beklenen + "' ama '" + p_tip() + ":" + p_deger() + "' geldi";
+    _hata_sayisi = _hata_sayisi + 1;
+    eger _hata_sayisi >= 5 {
+        yaz "--- DEBUG: 5 Hata Alindi, Derleme Durduruldu ---";
+        _p_pos = uzunluk(_p_tok);
+        don "";
+    }
+    p_ilerle();
+    don "";
+}
+
+fonk p_kontrol(tip) { don p_tip() == tip; }
+fonk p_kontrol2(tip, deger) { don p_tip() == tip ve p_deger() == deger; }
+
+fonk parse_birincil() {
+    eger p_kontrol("SAYI") {
+        degisken v = p_deger(); p_ilerle();
+        don ["SAYI", v];
+    }
+    eger p_kontrol("SAYI_ONDALI") {
+        degisken v = p_deger(); p_ilerle();
+        don ["SAYI_ONDALI", v];
+    }
+    eger p_kontrol("STRING") {
+        degisken v = p_deger(); p_ilerle();
+        don ["STRING", v];
+    }
+    eger p_kontrol("TUZ") {
+        p_ilerle();
+        don ["BOOL", "tuz"];
+    }
+    eger p_kontrol("TERS") {
+        p_ilerle();
+        don ["BOOL", "ters"];
+    }
+    eger p_kontrol("BOS") {
+        p_ilerle();
+        don ["BOS"];
+    }
+    eger p_kontrol2("OP", "-") {
+        p_ilerle();
+        degisken sag = parse_birincil();
+        don ["TEKLI", "-", sag];
+    }
+    eger p_kontrol("DEGIL") {
+        p_ilerle();
+        degisken sag = parse_birincil();
+        don ["TEKLI", "degil", sag];
+    }
+    eger p_kontrol("L_SQ") {
+        p_ilerle();
+        degisken elemanlar = [];
+        iken degil p_kontrol("R_SQ") ve degil p_kontrol("EOF") {
+            eger uzunluk(elemanlar) > 0 { p_esles("VIRGUL"); }
+            ekle(elemanlar, parse_ifade());
+        }
+        p_esles("R_SQ");
+        don ["LISTE", elemanlar];
+    }
+    eger p_kontrol("L_P") {
+        p_ilerle();
+        degisken e = parse_ifade();
+        p_esles("R_P");
+        don e;
+    }
+    eger p_kontrol("ID") {
+        degisken isim = p_deger();
+        p_ilerle();
+        eger p_kontrol("L_P") {
+            p_ilerle();
+            degisken arglar = [];
+            iken degil p_kontrol("R_P") ve degil p_kontrol("EOF") {
+                eger uzunluk(arglar) > 0 { p_esles("VIRGUL"); }
+                ekle(arglar, parse_ifade());
+            }
+            p_esles("R_P");
+            don ["CAGRI", isim, arglar];
+        }
+        don ["ID", isim];
+    }
+
+    yaz "[PARSER HATA] Satir " + metine(p_satir()) + ": Beklenmeyen token '" + p_tip() + ":" + p_deger() + "'";
+    p_ilerle();
+    don ["HATA", "beklenmeyen_token"];
+}
+
+fonk parse_postfix() {
+    degisken sol = parse_birincil();
+    iken tuz {
+        eger p_kontrol("L_SQ") {
+            p_ilerle();
+            degisken idx = parse_ifade();
+            p_esles("R_SQ");
+            sol = ["INDEX", sol, idx];
+            devam;
+        }
+        eger p_kontrol("NOKTA") {
+            p_ilerle();
+            degisken alan = p_esles("ID");
+            eger p_kontrol("L_P") {
+                p_ilerle();
+                degisken arglar = [];
+                iken degil p_kontrol("R_P") ve degil p_kontrol("EOF") {
+                    eger uzunluk(arglar) > 0 { p_esles("VIRGUL"); }
+                    ekle(arglar, parse_ifade());
+                }
+                p_esles("R_P");
+                sol = ["METOT", sol, alan, arglar];
+                devam;
+            }
+            sol = ["ALAN", sol, alan];
+            devam;
+        }
+        kir;
+    }
+    don sol;
+}
+
+fonk parse_carpma() {
+    degisken sol = parse_postfix();
+    iken p_kontrol("OP") {
+        degisken op = p_deger();
+        degisken ok = 0;
+        eger op == "*" { ok = 1; }
+        eger op == "/" { ok = 1; }
+        eger op == "%" { ok = 1; }
+        eger op == "**" { ok = 1; }
+        eger ok == 1 {
+            p_ilerle();
+            degisken sag = parse_postfix();
+            sol = ["BINOP", op, sol, sag];
+        } yoksa {
+            kir;
+        }
+    }
+    don sol;
+}
+
+fonk parse_toplama() {
+    degisken sol = parse_carpma();
+    iken p_kontrol("OP") {
+        degisken op = p_deger();
+        degisken ok = 0;
+        eger op == "+" { ok = 1; }
+        eger op == "-" { ok = 1; }
+        eger ok == 1 {
+            p_ilerle();
+            degisken sag = parse_carpma();
+            sol = ["BINOP", op, sol, sag];
+        } yoksa {
+            kir;
+        }
+    }
+    don sol;
+}
+
+fonk parse_karsilastirma() {
+    degisken sol = parse_toplama();
+    iken p_kontrol("OP") {
+        degisken op = p_deger();
+        degisken ok = 0;
+        eger op == "==" { ok = 1; }
+        eger op == "!=" { ok = 1; }
+        eger op == "<=" { ok = 1; }
+        eger op == ">=" { ok = 1; }
+        eger op == "<"  { ok = 1; }
+        eger op == ">"  { ok = 1; }
+        eger ok == 1 {
+            p_ilerle();
+            degisken sag = parse_toplama();
+            sol = ["BINOP", op, sol, sag];
+        } yoksa {
+            kir;
+        }
+    }
+    don sol;
+}
+
+fonk parse_ve() {
+    degisken sol = parse_karsilastirma();
+    iken p_kontrol("VE") {
+        p_ilerle();
+        degisken sag = parse_karsilastirma();
+        sol = ["BINOP", "ve", sol, sag];
+    }
+    don sol;
+}
+
+fonk parse_veya() {
+    degisken sol = parse_ve();
+    iken p_kontrol("VEYA") {
+        p_ilerle();
+        degisken sag = parse_ve();
+        sol = ["BINOP", "veya", sol, sag];
+    }
+    don sol;
+}
+
+fonk parse_ifade() {
+    degisken sol = parse_veya();
+
+    eger p_kontrol("ESIT") {
+        p_ilerle();
+        degisken sag = parse_ifade();
+        don ["ATAMA", sol, sag];
+    }
+
+    eger p_kontrol("OP") {
+        degisken op = p_deger();
+        degisken ok = 0;
+        eger op == "+=" { ok = 1; }
+        eger op == "-=" { ok = 1; }
+        eger op == "*=" { ok = 1; }
+        eger op == "/=" { ok = 1; }
+        eger op == "%=" { ok = 1; }
+        eger ok == 1 {
+            p_ilerle();
+            degisken sag = parse_ifade();
+            don ["BILESIK_ATAMA", op, sol, sag];
+        }
+    }
+
+    don sol;
+}
+
+fonk parse_stmt() {
+    eger p_kontrol("DEGISKEN") {
+        p_ilerle();
+        degisken isim = p_esles("ID");
+        p_esles("ESIT");
+        degisken deger = parse_ifade();
+        p_esles("NOKTA_VIRGUL");
+        don ["DEGISKEN", isim, deger];
+    }
+
+    eger p_kontrol("FONK") {
+        p_ilerle();
+        degisken isim = p_esles("ID");
+        p_esles("L_P");
+        degisken params = [];
+        iken p_tip() != "EOF" {
+            eger p_kontrol("R_P") { kir; }
+            eger uzunluk(params) > 0 {
+                p_esles("VIRGUL");
+            }
+            eger p_kontrol("ID") {
+                ekle(params, p_esles("ID"));
+            } yoksa {
+                kir;
+            }
+        }
+        p_esles("R_P");
+        degisken govde = parse_blok();
+        don ["FONK", isim, params, govde];
+    }
+
+    eger p_kontrol("EGER") {
+        p_ilerle();
+        degisken kosul = parse_ifade();
+        degisken then_blok = parse_blok();
+
+        eger p_kontrol("YOKSA") {
+            p_ilerle();
+            eger p_kontrol("EGER") {
+                degisken else_dal = parse_stmt();
+                don ["EGER", kosul, then_blok, ["BLOK", [else_dal]]];
+            }
+            degisken else_blok = parse_blok();
+            don ["EGER", kosul, then_blok, else_blok];
+        }
+
+        don ["EGER", kosul, then_blok, ["BLOK", []]];
+    }
+
+    eger p_kontrol("IKEN") {
+        p_ilerle();
+        degisken kosul = parse_ifade();
+        degisken govde = parse_blok();
+        don ["IKEN", kosul, govde];
+    }
+
+    eger p_kontrol("DON") {
+        p_ilerle();
+        eger p_kontrol("NOKTA_VIRGUL") {
+            p_ilerle();
+            don ["DON", ["BOS"]];
+        }
+        degisken e = parse_ifade();
+        p_esles("NOKTA_VIRGUL");
+        don ["DON", e];
+    }
+
+    eger p_kontrol("KIR") {
+        p_ilerle();
+        p_esles("NOKTA_VIRGUL");
+        don ["KIR"];
+    }
+
+    eger p_kontrol("DEVAM") {
+        p_ilerle();
+        p_esles("NOKTA_VIRGUL");
+        don ["DEVAM"];
+    }
+
+    eger p_kontrol("YAZ") {
+        p_ilerle();
+        degisken e = parse_ifade();
+        p_esles("NOKTA_VIRGUL");
+        don ["YAZ", e];
+    }
+
+    eger p_kontrol("L_B") {
+        don parse_blok();
+    }
+
+    eger p_kontrol("NOKTA_VIRGUL") {
+        p_ilerle();
+        don ["BOS_STMT"];
+    }
+
+    degisken e = parse_ifade();
+    p_esles("NOKTA_VIRGUL");
+    don ["IFADE", e];
+}
+
+fonk parse_blok() {
+    p_esles("L_B");
+    degisken stmtler = [];
+    iken degil p_kontrol("R_B") ve degil p_kontrol("EOF") {
+        ekle(stmtler, parse_stmt());
+    }
+    p_esles("R_B");
+    don ["BLOK", stmtler];
+}
+
+fonk parse(tokenlar) {
+    _p_tok = tokenlar;
+    _p_pos = 0;
+    _hata_sayisi = 0;
+    degisken stmtler = [];
+    iken degil p_kontrol("EOF") {
+        ekle(stmtler, parse_stmt());
+    }
+    don ["PROGRAM", stmtler];
+}
+
+fonk zedin_parse(kaynak_kodu) {
+    degisken tokenlar = tara(kaynak_kodu);
+    don parse(tokenlar);
+}
+
+// ============================================================
+// asm_backend.zed - Zedin AST -> ARM64 Assembly
+// ============================================================
+
+degisken _asm_satirlar = [];
+degisken _veri_satirlar = [];
+degisken _degisken_satirlar = [];
+degisken _str_sayac = 0;
+degisken _degiskenler = [];
+degisken _stack_boyut = 0;
+degisken _etiket_sayac = 0;
+degisken _yerel_mod = ters;
+degisken _yerel_degiskenler = [];
+degisken _yerel_offset = 0;
+degisken _ust_kapsamlar = [];
+degisken _fonk_satirlar = [];
+degisken _dongu_etiketler = [];
+
+fonk asm_yaz(satir) {
+    ekle(_asm_satirlar, satir);
+}
+
+fonk veri_yaz(satir) {
+    ekle(_veri_satirlar, satir);
+}
+
+fonk yeni_str_etiketi() {
+    _str_sayac = _str_sayac + 1;
+    don "_str_" + metine(_str_sayac);
+}
+
+fonk yeni_etiket() {
+    _etiket_sayac = _etiket_sayac + 1;
+    don "_L" + metine(_etiket_sayac);
+}
+
+fonk ifade_metin_mi(ifade) {
+    eger ifade == bos { don ters; }
+    eger ifade[0] == "STR" { don tuz; }
+    eger ifade[0] == "ID" {
+        degisken t = degisken_tip_bul_tam(ifade[1]);
+        eger t == "metin" { don tuz; }
+    }
+    eger ifade[0] == "CAGRI" ve uzunluk(ifade) > 1 ve (ifade[1] == "metine" veya ifade[1] == "oku_dosya") { don tuz; }
+    eger ifade[0] == "INDEX" ve uzunluk(ifade) > 1 {
+        degisken itaban = ifade[1];
+        eger itaban[0] == "ID" ve degisken_tip_bul_tam(itaban[1]) == "metin" { don tuz; }
+        eger itaban[0] == "STR" { don tuz; }
+    }
+    eger ifade[0] == "BINOP" ve ifade[1] == "+" ve uzunluk(ifade) > 3 {
+        eger ifade_metin_mi(ifade[2]) veya ifade_metin_mi(ifade[3]) { don tuz; }
+    }
+    don ters;
+}
+
+fonk ters_dal(op) {
+    eger op == "==" { don "b.ne"; }
+    eger op == "!=" { don "b.eq"; }
+    eger op == "<"  { don "b.ge"; }
+    eger op == ">"  { don "b.le"; }
+    eger op == "<=" { don "b.gt"; }
+    eger op == ">=" { don "b.lt"; }
+    don "b.ne";
+}
+
+fonk asm_baslik() {
+    _degiskenler = [];
+    _stack_boyut = 0;
+    asm_yaz(".section .text");
+    asm_yaz(".global main");
+    asm_yaz("main:");
+    asm_yaz("    stp x29, x30, [sp, #-16]!");
+    asm_yaz("    mov x29, sp");
+}
+
+fonk asm_son() {
+    asm_yaz("    mov x0, #0");
+    asm_yaz("    ldp x29, x30, [sp], #16");
+    asm_yaz("    ret");
+
+    degisken fi = 0;
+    iken fi < uzunluk(_fonk_satirlar) {
+        asm_yaz(_fonk_satirlar[fi]);
+        fi = fi + 1;
+    }
+
+    asm_yaz("");
+    asm_yaz("_zedin_strlen:");
+    asm_yaz("    mov x1, x0");
+    asm_yaz("    mov x2, #0");
+    asm_yaz("_zedin_strlen_dongu:");
+    asm_yaz("    ldrb w3, [x1], #1");
+    asm_yaz("    cbz w3, _zedin_strlen_bitis");
+    asm_yaz("    add x2, x2, #1");
+    asm_yaz("    b _zedin_strlen_dongu");
+    asm_yaz("_zedin_strlen_bitis:");
+    asm_yaz("    mov x0, x2");
+    asm_yaz("    ret");
+    asm_yaz("");
+    asm_yaz("_zedin_metine:");
+    asm_yaz("    mov x1, x0");
+    asm_yaz("    adr x2, _metine_buf");
+    asm_yaz("    add x2, x2, #31");
+    asm_yaz("    mov x3, #0");
+    asm_yaz("    strb w3, [x2]");
+    asm_yaz("    mov x4, #10");
+    asm_yaz("_zedin_metine_dongu:");
+    asm_yaz("    sub x2, x2, #1");
+    asm_yaz("    udiv x3, x1, x4");
+    asm_yaz("    msub x5, x3, x4, x1");
+    asm_yaz("    add x5, x5, #48");
+    asm_yaz("    strb w5, [x2]");
+    asm_yaz("    mov x1, x3");
+    asm_yaz("    cbnz x1, _zedin_metine_dongu");
+    asm_yaz("    mov x0, x2");
+    asm_yaz("    ret");
+    asm_yaz("");
+    asm_yaz("_zedin_sayiya:");
+    asm_yaz("    mov x1, x0");
+    asm_yaz("    mov x2, #0");
+    asm_yaz("    mov x4, #10");
+    asm_yaz("_zedin_sayiya_dongu:");
+    asm_yaz("    ldrb w3, [x1], #1");
+    asm_yaz("    sub w3, w3, #48");
+    asm_yaz("    cmp w3, #9");
+    asm_yaz("    b.hi _zedin_sayiya_bitis");
+    asm_yaz("    madd x2, x2, x4, x3");
+    asm_yaz("    b _zedin_sayiya_dongu");
+    asm_yaz("_zedin_sayiya_bitis:");
+    asm_yaz("    mov x0, x2");
+    asm_yaz("    ret");
+    asm_yaz("");
+    asm_yaz("_zedin_str_chr:");
+    asm_yaz("    adr x2, _char_buf");
+    asm_yaz("    ldrb w3, [x0, x1]");
+    asm_yaz("    strb w3, [x2]");
+    asm_yaz("    mov w3, #0");
+    asm_yaz("    strb w3, [x2, #1]");
+    asm_yaz("    mov x0, x2");
+    asm_yaz("    ret");
+    asm_yaz("");
+    asm_yaz("_zedin_char_kodu:");
+    asm_yaz("    ldrb w0, [x0]");
+    asm_yaz("    ret");
+    asm_yaz("");
+    asm_yaz("_zedin_liste_yeni:");
+    asm_yaz("    stp x29, x30, [sp, #-16]!");
+    asm_yaz("    mov x29, sp");
+    asm_yaz("    stp x19, x20, [sp, #-16]!");
+    asm_yaz("    mov x19, x0");
+    asm_yaz("    mov x0, #24");
+    asm_yaz("    bl malloc");
+    asm_yaz("    mov x20, x0");
+    asm_yaz("    lsl x0, x19, #3");
+    asm_yaz("    bl malloc");
+    asm_yaz("    str x0, [x20, #16]");
+    asm_yaz("    str x19, [x20]");
+    asm_yaz("    str x19, [x20, #8]");
+    asm_yaz("    mov x0, x20");
+    asm_yaz("    ldp x19, x20, [sp], #16");
+    asm_yaz("    ldp x29, x30, [sp], #16");
+    asm_yaz("    ret");
+    asm_yaz("");
+    asm_yaz("_zedin_ekle:");
+    asm_yaz("    stp x29, x30, [sp, #-16]!");
+    asm_yaz("    mov x29, sp");
+    asm_yaz("    stp x19, x20, [sp, #-16]!");
+    asm_yaz("    stp x21, x22, [sp, #-16]!");
+    asm_yaz("    mov x19, x0");
+    asm_yaz("    mov x20, x1");
+    asm_yaz("    ldr x21, [x19]");
+    asm_yaz("    ldr x22, [x19, #8]");
+    asm_yaz("    cmp x22, x21");
+    asm_yaz("    b.lt _zedin_ekle_yaz");
+    asm_yaz("    cbnz x21, _zedin_ekle_buyut");
+    asm_yaz("    mov x21, #4");
+    asm_yaz("    b _zedin_ekle_realloc");
+    asm_yaz("_zedin_ekle_buyut:");
+    asm_yaz("    lsl x21, x21, #1");
+    asm_yaz("_zedin_ekle_realloc:");
+    asm_yaz("    str x21, [x19]");
+    asm_yaz("    ldr x0, [x19, #16]");
+    asm_yaz("    lsl x1, x21, #3");
+    asm_yaz("    bl realloc");
+    asm_yaz("    str x0, [x19, #16]");
+    asm_yaz("_zedin_ekle_yaz:");
+    asm_yaz("    ldr x0, [x19, #16]");
+    asm_yaz("    ldr x1, [x19, #8]");
+    asm_yaz("    str x20, [x0, x1, lsl #3]");
+    asm_yaz("    add x1, x1, #1");
+    asm_yaz("    str x1, [x19, #8]");
+    asm_yaz("    mov x0, x19");
+    asm_yaz("    ldp x21, x22, [sp], #16");
+    asm_yaz("    ldp x19, x20, [sp], #16");
+    asm_yaz("    ldp x29, x30, [sp], #16");
+    asm_yaz("    ret");
+    asm_yaz("");
+    asm_yaz("_zedin_cikar:");
+    asm_yaz("    stp x29, x30, [sp, #-16]!");
+    asm_yaz("    mov x29, sp");
+    asm_yaz("    stp x19, x20, [sp, #-16]!");
+    asm_yaz("    stp x21, x22, [sp, #-16]!");
+    asm_yaz("    mov x19, x0");
+    asm_yaz("    mov x20, x1");
+    asm_yaz("    ldr x21, [x19, #8]");
+    asm_yaz("    cmp x20, x21");
+    asm_yaz("    b.ge _zedin_cikar_bitis");
+    asm_yaz("    ldr x22, [x19, #16]");
+    asm_yaz("    sub x21, x21, #1");
+    asm_yaz("_zedin_cikar_dongu:");
+    asm_yaz("    add x0, x20, #1");
+    asm_yaz("    cmp x0, x21");
+    asm_yaz("    b.ge _zedin_cikar_son");
+    asm_yaz("    ldr x0, [x22, x0, lsl #3]");
+    asm_yaz("    str x0, [x22, x20, lsl #3]");
+    asm_yaz("    add x20, x20, #1");
+    asm_yaz("    b _zedin_cikar_dongu");
+    asm_yaz("_zedin_cikar_son:");
+    asm_yaz("    str x21, [x19, #8]");
+    asm_yaz("_zedin_cikar_bitis:");
+    asm_yaz("    ldp x21, x22, [sp], #16");
+    asm_yaz("    ldp x19, x20, [sp], #16");
+    asm_yaz("    ldp x29, x30, [sp], #16");
+    asm_yaz("    ret");
+    veri_yaz(".section .data");
+    degisken di = 0;
+    iken di < uzunluk(_degisken_satirlar) {
+        veri_yaz(_degisken_satirlar[di]);
+        di = di + 1;
+    }
+    veri_yaz("_fmt_sayi: .byte 37, 100, 10, 0");
+    veri_yaz("_fmt_str_sayi: .byte 37, 115, 37, 100, 10, 0");
+    veri_yaz("_fmt_str_str: .byte 37, 115, 37, 115, 10, 0");
+    veri_yaz("_buf: .space 256");
+    veri_yaz("_metine_buf: .space 32");
+    veri_yaz("_char_buf: .space 16");
+}
+
+fonk asm_str_tanimla(etiket, deger) {
+    ekle(_degisken_satirlar, etiket + ": .asciz \"" + deger + "\"");
+}
+
+fonk asm_puts(etiket) {
+    asm_yaz("    adr x0, " + etiket);
+    asm_yaz("    bl puts");
+}
+
+fonk degisken_bul(isim) {
+    eger _yerel_mod {
+        degisken yi = uzunluk(_yerel_degiskenler) - 1;
+        iken yi >= 0 {
+            eger _yerel_degiskenler[yi][0] == isim {
+                don "__yerel_" + metine(_yerel_degiskenler[yi][1]) + "__";
+            }
+            yi = yi - 1;
+        }
+        degisken ki = uzunluk(_ust_kapsamlar) - 1;
+        iken ki >= 0 {
+            degisken ust_yereller = _ust_kapsamlar[ki];
+            degisken uyi = uzunluk(ust_yereller) - 1;
+            iken uyi >= 0 {
+                eger ust_yereller[uyi][0] == isim {
+                    degisken derinlik = uzunluk(_ust_kapsamlar) - ki;
+                    don "__upvalue_" + metine(derinlik) + "_" + metine(ust_yereller[uyi][1]) + "__";
+                }
+                uyi = uyi - 1;
+            }
+            ki = ki - 1;
+        }
+    }
+    degisken i = 0;
+    iken i < uzunluk(_degiskenler) {
+        eger _degiskenler[i][0] == isim {
+            don _degiskenler[i][1];
+        }
+        i = i + 1;
+    }
+    don "";
+}
+
+fonk degisken_tip_bul_tam(isim) {
+    eger _yerel_mod {
+        degisken yt = yerel_tip_bul(isim);
+        eger yt != "sayi" veya yerel_bul(isim) >= 0 { don yt; }
+    }
+    don degisken_tip_bul(isim);
+}
+
+fonk degisken_tip_bul(isim) {
+    degisken i = 0;
+    iken i < uzunluk(_degiskenler) {
+        eger _degiskenler[i][0] == isim { don _degiskenler[i][2]; }
+        i = i + 1;
+    }
+    don "sayi";
+}
+
+fonk degisken_ekle_tipli(isim, veri_tipi) {
+    eger _yerel_mod {
+        _yerel_offset = _yerel_offset + 8;
+        ekle(_yerel_degiskenler, [isim, _yerel_offset, veri_tipi]);
+        don "__yerel__";
+    }
+    degisken etiket = "_var_" + isim;
+    ekle(_degiskenler, [isim, etiket, veri_tipi]);
+    ekle(_degisken_satirlar, etiket + ": .quad 0");
+    don etiket;
+}
+
+fonk degisken_ekle(isim) {
+    don degisken_ekle_tipli(isim, "sayi");
+}
+
+fonk yerel_bul(isim) {
+    degisken i = uzunluk(_yerel_degiskenler) - 1;
+    iken i >= 0 {
+        eger _yerel_degiskenler[i][0] == isim { don _yerel_degiskenler[i][1]; }
+        i = i - 1;
+    }
+    don -1;
+}
+
+fonk yerel_tip_bul(isim) {
+    degisken i = uzunluk(_yerel_degiskenler) - 1;
+    iken i >= 0 {
+        eger _yerel_degiskenler[i][0] == isim { don _yerel_degiskenler[i][2]; }
+        i = i - 1;
+    }
+    degisken ki = uzunluk(_ust_kapsamlar) - 1;
+    iken ki >= 0 {
+        degisken ust_yereller = _ust_kapsamlar[ki];
+        degisken uyi = uzunluk(ust_yereller) - 1;
+        iken uyi >= 0 {
+            eger ust_yereller[uyi][0] == isim { don ust_yereller[uyi][2]; }
+            uyi = uyi - 1;
+        }
+        ki = ki - 1;
+    }
+    don "sayi";
+}
+
+fonk kodla_ifade(ifade) {
+    eger ifade == bos { asm_yaz("    mov x0, #0"); don 0; }
+    degisken dt = ifade[0];
+
+    eger dt == "SAYI" {
+        degisken sayi_val = sayiya(ifade[1]);
+        eger sayi_val >= 0 ve sayi_val <= 65535 {
+            asm_yaz("    mov x0, #" + ifade[1]);
+        } yoksa {
+            degisken lo = metine(bit_ve(sayi_val, 65535));
+            degisken hi = metine(bit_ve(bit_kaydir_sag(sayi_val, 16), 65535));
+            asm_yaz("    movz x0, #" + lo);
+            asm_yaz("    movk x0, #" + hi + ", lsl #16");
+        }
+        don 0;
+    }
+    eger dt == "STR" {
+        degisken etiket = yeni_str_etiketi();
+        asm_str_tanimla(etiket, ifade[1]);
+        asm_yaz("    adr x0, " + etiket);
+        don 0;
+    }
+    eger dt == "BOOL" {
+        eger ifade[1] == "1" veya ifade[1] == "tuz" {
+            asm_yaz("    mov x0, #1");
+        } yoksa {
+            asm_yaz("    mov x0, #0");
+        }
+        don 0;
+    }
+    eger dt == "ID" {
+        degisken etiket = degisken_bul(ifade[1]);
+        eger uzunluk(etiket) > 0 {
+            eger etiket[0] == "_" ve uzunluk(etiket) > 8 ve etiket[1] == "_" ve etiket[2] == "y" {
+                degisken off_str = "";
+                degisken oi = 8;
+                iken oi < uzunluk(etiket) ve etiket[oi] != "_" {
+                    off_str = off_str + etiket[oi];
+                    oi = oi + 1;
+                }
+                asm_yaz("    ldr x0, [x29, #16+" + off_str + "]");
+            } yoksa eger uzunluk(etiket) > 10 ve etiket[0] == "_" ve etiket[1] == "_" ve etiket[2] == "u" {
+                degisken ui = 10;
+                degisken der_str = "";
+                iken ui < uzunluk(etiket) ve etiket[ui] != "_" {
+                    der_str = der_str + etiket[ui];
+                    ui = ui + 1;
+                }
+                ui = ui + 1;
+                degisken uoff_str = "";
+                iken ui < uzunluk(etiket) ve etiket[ui] != "_" {
+                    uoff_str = uoff_str + etiket[ui];
+                    ui = ui + 1;
+                }
+                asm_yaz("    mov x1, x29");
+                degisken di = 0;
+                degisken der_num = sayiya(der_str);
+                iken di < der_num {
+                    asm_yaz("    ldr x1, [x1]");
+                    di = di + 1;
+                }
+                asm_yaz("    ldr x0, [x1, #16+" + uoff_str + "]");
+            } yoksa {
+                asm_yaz("    adr x1, " + etiket);
+                asm_yaz("    ldr x0, [x1]");
+            }
+        }
+        don 0;
+    }
+
+    eger dt == "CAGRI" {
+        degisken fn_isim = ifade[1];
+        degisken fn_arglar = ifade[2];
+        eger fn_isim == "uzunluk" ve uzunluk(fn_arglar) == 1 {
+            degisken hedef_ifade = fn_arglar[0];
+            eger hedef_ifade[0] == "ID" ve degisken_tip_bul_tam(hedef_ifade[1]) == "metin" {
+                kodla_ifade(hedef_ifade);
+                asm_yaz("    bl _zedin_strlen");
+                don 0;
+            }
+            eger hedef_ifade[0] == "STR" {
+                degisken uzun_st_etiket = yeni_str_etiketi();
+                asm_str_tanimla(uzun_st_etiket, hedef_ifade[1]);
+                asm_yaz("    adr x0, " + uzun_st_etiket);
+                asm_yaz("    bl _zedin_strlen");
+                don 0;
+            }
+            kodla_ifade(hedef_ifade);
+            asm_yaz("    ldr x0, [x0, #8]");
+            don 0;
+        }
+
+        eger fn_isim == "ekle" ve uzunluk(fn_arglar) == 2 {
+            kodla_ifade(fn_arglar[0]);
+            asm_yaz("    str x0, [sp, #-16]!");
+            kodla_ifade(fn_arglar[1]);
+            asm_yaz("    mov x1, x0");
+            asm_yaz("    ldr x0, [sp]");
+            asm_yaz("    add sp, sp, #16");
+            asm_yaz("    bl _zedin_ekle");
+            don 0;
+        }
+
+        eger fn_isim == "cikar" ve uzunluk(fn_arglar) == 2 {
+            kodla_ifade(fn_arglar[0]);
+            asm_yaz("    str x0, [sp, #-16]!");
+            kodla_ifade(fn_arglar[1]);
+            asm_yaz("    mov x1, x0");
+            asm_yaz("    ldr x0, [sp]");
+            asm_yaz("    add sp, sp, #16");
+            asm_yaz("    bl _zedin_cikar");
+            don 0;
+        }
+
+        eger fn_isim == "metine" ve uzunluk(fn_arglar) == 1 {
+            kodla_ifade(fn_arglar[0]);
+            asm_yaz("    bl _zedin_metine");
+            don 0;
+        }
+
+        eger fn_isim == "sayiya" ve uzunluk(fn_arglar) == 1 {
+            degisken sarg = fn_arglar[0];
+            eger sarg[0] == "STR" {
+                kodla_ifade(sarg);
+                asm_yaz("    bl _zedin_sayiya");
+                don 0;
+            }
+            eger sarg[0] == "ID" ve degisken_tip_bul_tam(sarg[1]) == "metin" {
+                kodla_ifade(sarg);
+                asm_yaz("    bl _zedin_sayiya");
+                don 0;
+            }
+            kodla_ifade(sarg);
+            don 0;
+        }
+
+        eger fn_isim == "char_kodu" ve uzunluk(fn_arglar) == 1 {
+            kodla_ifade(fn_arglar[0]);
+            asm_yaz("    bl _zedin_char_kodu");
+            don 0;
+        }
+
+        eger fn_isim == "oku_dosya" ve uzunluk(fn_arglar) == 1 {
+            degisken mod_etiket = yeni_str_etiketi();
+            asm_str_tanimla(mod_etiket, "r");
+            kodla_ifade(fn_arglar[0]);
+            asm_yaz("    mov x19, x0");
+            asm_yaz("    adr x1, " + mod_etiket);
+            asm_yaz("    bl fopen");
+            asm_yaz("    mov x20, x0");
+            degisken hata_et = yeni_etiket();
+            degisken bitis_et = yeni_etiket();
+            asm_yaz("    cmp x20, #0");
+            asm_yaz("    b.eq " + hata_et);
+            asm_yaz("    mov x0, x20");
+            asm_yaz("    mov x1, #0");
+            asm_yaz("    mov x2, #2");
+            asm_yaz("    bl fseek");
+            asm_yaz("    mov x0, x20");
+            asm_yaz("    bl ftell");
+            asm_yaz("    mov x21, x0");
+            asm_yaz("    mov x0, x20");
+            asm_yaz("    mov x1, #0");
+            asm_yaz("    mov x2, #0");
+            asm_yaz("    bl fseek");
+            asm_yaz("    mov x0, x21");
+            asm_yaz("    add x0, x0, #1");
+            asm_yaz("    bl malloc");
+            asm_yaz("    mov x22, x0");
+            asm_yaz("    mov x1, #1");
+            asm_yaz("    mov x2, x21");
+            asm_yaz("    mov x3, x20");
+            asm_yaz("    bl fread");
+            asm_yaz("    mov x0, x22");
+            asm_yaz("    add x0, x0, x21");
+            asm_yaz("    mov w1, #0");
+            asm_yaz("    strb w1, [x0]");
+            asm_yaz("    mov x0, x20");
+            asm_yaz("    bl fclose");
+            asm_yaz("    mov x0, x22");
+            asm_yaz("    b " + bitis_et);
+            asm_yaz(hata_et + ":");
+            asm_yaz("    mov x0, #0");
+            asm_yaz(bitis_et + ":");
+            don 0;
+        }
+
+        eger fn_isim == "byte_dosya_temizle" ve uzunluk(fn_arglar) == 1 {
+            degisken mod_etiket2 = yeni_str_etiketi();
+            asm_str_tanimla(mod_etiket2, "w");
+            kodla_ifade(fn_arglar[0]);
+            asm_yaz("    mov x19, x0");
+            asm_yaz("    mov x0, x19");
+            asm_yaz("    adr x1, " + mod_etiket2);
+            asm_yaz("    bl fopen");
+            asm_yaz("    cmp x0, #0");
+            degisken skip_et = yeni_etiket();
+            asm_yaz("    b.eq " + skip_et);
+            asm_yaz("    bl fclose");
+            asm_yaz(skip_et + ":");
+            don 0;
+        }
+
+        eger fn_isim == "byte_yaz" ve uzunluk(fn_arglar) == 2 {
+            degisken mod_etiket3 = yeni_str_etiketi();
+            asm_str_tanimla(mod_etiket3, "ab");
+            kodla_ifade(fn_arglar[0]);
+            asm_yaz("    mov x19, x0");
+            kodla_ifade(fn_arglar[1]);
+            asm_yaz("    mov x20, x0");
+            asm_yaz("    mov x0, x19");
+            asm_yaz("    adr x1, " + mod_etiket3);
+            asm_yaz("    bl fopen");
+            asm_yaz("    cmp x0, #0");
+            degisken skip_et2 = yeni_etiket();
+            asm_yaz("    b.eq " + skip_et2);
+            asm_yaz("    mov x21, x0");
+            asm_yaz("    mov x0, x20");
+            asm_yaz("    mov x1, x21");
+            asm_yaz("    bl fputc");
+            asm_yaz("    mov x0, x21");
+            asm_yaz("    bl fclose");
+            asm_yaz(skip_et2 + ":");
+            don 0;
+        }
+
+        degisken ai = 0;
+        iken ai < uzunluk(fn_arglar) {
+            kodla_ifade(fn_arglar[ai]);
+            asm_yaz("    mov x" + metine(ai + 19) + ", x0");
+            ai = ai + 1;
+        }
+        ai = 0;
+        iken ai < uzunluk(fn_arglar) {
+            asm_yaz("    mov x" + metine(ai) + ", x" + metine(ai + 19));
+            ai = ai + 1;
+        }
+        asm_yaz("    stp x22, x23, [sp, #-16]!");
+        asm_yaz("    bl " + fn_isim);
+        asm_yaz("    ldp x22, x23, [sp], #16");
+        don 0;
+    }
+
+    eger dt == "LISTE" {
+        degisken elemanlar = ifade[1];
+        asm_yaz("    mov x0, #" + metine(uzunluk(elemanlar)));
+        asm_yaz("    bl _zedin_liste_yeni");
+        asm_yaz("    stp x0, x1, [sp, #-16]!");
+        degisken li = 0;
+        iken li < uzunluk(elemanlar) {
+            kodla_ifade(elemanlar[li]);
+            asm_yaz("    ldr x1, [sp]");
+            asm_yaz("    ldr x1, [x1, #16]");
+            eger li > 0 {
+                asm_yaz("    add x1, x1, #" + metine(li * 8));
+            }
+            asm_yaz("    str x0, [x1]");
+            li = li + 1;
+        }
+        asm_yaz("    ldp x0, x1, [sp], #16");
+        don 0;
+    }
+
+    eger dt == "INDEX" {
+        degisken taban = ifade[1];
+        eger (taban[0] == "ID" ve degisken_tip_bul_tam(taban[1]) == "metin") veya taban[0] == "STR" {
+            kodla_ifade(ifade[2]);
+            asm_yaz("    mov x21, x0");
+            eger taban[0] == "STR" {
+                degisken sc_etiket = yeni_str_etiketi();
+                asm_str_tanimla(sc_etiket, taban[1]);
+                asm_yaz("    adr x0, " + sc_etiket);
+            } yoksa {
+                kodla_ifade(taban);
+            }
+            asm_yaz("    mov x1, x21");
+            asm_yaz("    bl _zedin_str_chr");
+            don 0;
+        }
+        kodla_ifade(ifade[2]);
+        asm_yaz("    mov x21, x0");
+        kodla_ifade(ifade[1]);
+        asm_yaz("    ldr x0, [x0, #16]");
+        asm_yaz("    lsl x21, x21, #3");
+        asm_yaz("    add x0, x0, x21");
+        asm_yaz("    ldr x0, [x0]");
+        don 0;
+    }
+
+    eger dt == "ATAMA" {
+        degisken hedef = ifade[1];
+        eger hedef[0] == "INDEX" {
+            kodla_ifade(ifade[2]);
+            asm_yaz("    mov x22, x0");
+            kodla_ifade(hedef[2]);
+            asm_yaz("    mov x21, x0");
+            kodla_ifade(hedef[1]);
+            asm_yaz("    ldr x0, [x0, #16]");
+            asm_yaz("    lsl x21, x21, #3");
+            asm_yaz("    add x0, x0, x21");
+            asm_yaz("    str x22, [x0]");
+            don 0;
+        }
+        kodla_ifade(ifade[2]);
+        eger hedef[0] == "ID" {
+            degisken etiket = degisken_bul(hedef[1]);
+            eger uzunluk(etiket) > 0 {
+                eger etiket[0] == "_" ve uzunluk(etiket) > 8 ve etiket[1] == "_" ve etiket[2] == "y" {
+                    degisken off_str = "";
+                    degisken oi = 8;
+                    iken oi < uzunluk(etiket) ve etiket[oi] != "_" {
+                        off_str = off_str + etiket[oi];
+                        oi = oi + 1;
+                    }
+                    asm_yaz("    str x0, [x29, #16+" + off_str + "]");
+                } yoksa eger uzunluk(etiket) > 10 ve etiket[0] == "_" ve etiket[1] == "_" ve etiket[2] == "u" {
+                    degisken ui = 10;
+                    degisken der_str = "";
+                    iken ui < uzunluk(etiket) ve etiket[ui] != "_" {
+                        der_str = der_str + etiket[ui];
+                        ui = ui + 1;
+                    }
+                    ui = ui + 1;
+                    degisken uoff_str = "";
+                    iken ui < uzunluk(etiket) ve etiket[ui] != "_" {
+                        uoff_str = uoff_str + etiket[ui];
+                        ui = ui + 1;
+                    }
+                    asm_yaz("    mov x1, x29");
+                    degisken di = 0;
+                    degisken der_num = sayiya(der_str);
+                    iken di < der_num {
+                        asm_yaz("    ldr x1, [x1]");
+                        di = di + 1;
+                    }
+                    asm_yaz("    str x0, [x1, #16+" + uoff_str + "]");
+                } yoksa {
+                    asm_yaz("    adr x1, " + etiket);
+                    asm_yaz("    str x0, [x1]");
+                }
+            }
+        }
+        don 0;
+    }
+
+    eger dt == "BINOP" {
+        degisken op = ifade[1];
+        eger op == "ve" {
+            degisken ve_son = yeni_etiket();
+            degisken ve_sifir = yeni_etiket();
+            kodla_ifade(ifade[2]);
+            asm_yaz("    cmp x0, #0");
+            asm_yaz("    b.eq " + ve_sifir);
+            kodla_ifade(ifade[3]);
+            asm_yaz("    cmp x0, #0");
+            asm_yaz("    cset x0, ne");
+            asm_yaz("    b " + ve_son);
+            asm_yaz(ve_sifir + ":");
+            asm_yaz("    mov x0, #0");
+            asm_yaz(ve_son + ":");
+            don 0;
+        }
+        eger op == "veya" {
+            degisken veya_son = yeni_etiket();
+            degisken veya_bir = yeni_etiket();
+            kodla_ifade(ifade[2]);
+            asm_yaz("    cmp x0, #0");
+            asm_yaz("    b.ne " + veya_bir);
+            kodla_ifade(ifade[3]);
+            asm_yaz("    cmp x0, #0");
+            asm_yaz("    cset x0, ne");
+            asm_yaz("    b " + veya_son);
+            asm_yaz(veya_bir + ":");
+            asm_yaz("    mov x0, #1");
+            asm_yaz(veya_son + ":");
+            don 0;
+        }
+        kodla_ifade(ifade[2]);
+        asm_yaz("    mov x22, x0");
+        kodla_ifade(ifade[3]);
+        asm_yaz("    mov x23, x0");
+        asm_yaz("    mov x0, x22");
+        eger op == "+" { asm_yaz("    add x0, x0, x23"); }
+        eger op == "-" { asm_yaz("    sub x0, x0, x23"); }
+        eger op == "*" { asm_yaz("    mul x0, x0, x23"); }
+        eger op == "/" { asm_yaz("    sdiv x0, x0, x23"); }
+        eger op == "%" {
+            asm_yaz("    sdiv x24, x22, x23");
+            asm_yaz("    msub x0, x24, x23, x22");
+        }
+        don 0;
+    }
+    don 0;
+}
+
+fonk kodla_stmt(stmt) {
+    eger stmt == bos { don 0; }
+    degisken st = stmt[0];
+
+    eger st == "DEGISKEN" {
+        degisken isim = stmt[1];
+        degisken ifade_tipi = "sayi";
+        eger uzunluk(stmt) > 2 ve stmt[2] != bos {
+            eger stmt[2][0] == "STR" { ifade_tipi = "metin"; }
+            yoksa eger stmt[2][0] == "LISTE" { ifade_tipi = "liste"; }
+            yoksa eger ifade_metin_mi(stmt[2]) { ifade_tipi = "metin"; }
+        }
+        degisken etiket = degisken_ekle_tipli(isim, ifade_tipi);
+        kodla_ifade(stmt[2]);
+        eger etiket == "__yerel__" {
+            asm_yaz("    str x0, [x29, #16+" + metine(_yerel_offset) + "]");
+        } yoksa {
+            asm_yaz("    adr x1, " + etiket);
+            asm_yaz("    str x0, [x1]");
+        }
+        don 0;
+    }
+
+    eger st == "YAZ" {
+        degisken ifade = stmt[1];
+        eger ifade[0] == "STR" {
+            degisken etiket = yeni_str_etiketi();
+            asm_str_tanimla(etiket, ifade[1]);
+            asm_puts(etiket);
+        } yoksa {
+            eger ifade[0] == "ID" {
+                degisken var_tipi = degisken_tip_bul_tam(ifade[1]);
+                eger var_tipi == "metin" {
+                    kodla_ifade(ifade);
+                    asm_yaz("    bl puts");
+                } yoksa {
+                    kodla_ifade(ifade);
+                    asm_yaz("    mov x19, x0");
+                    asm_yaz("    adr x0, _fmt_sayi");
+                    asm_yaz("    mov x1, x19");
+                    asm_yaz("    bl printf");
+                }
+            } yoksa {
+                eger ifade[0] != "BINOP" ve ifade_metin_mi(ifade) {
+                    kodla_ifade(ifade);
+                    asm_yaz("    bl puts");
+                } yoksa eger ifade[0] == "BINOP" ve ifade[1] == "+" ve (ifade_metin_mi(ifade[2]) veya ifade_metin_mi(ifade[3])) {
+                    degisken sol = ifade[2];
+                    degisken sag = ifade[3];
+                    eger sol[0] == "STR" {
+                        degisken se = yeni_str_etiketi();
+                        asm_str_tanimla(se, sol[1]);
+                        asm_yaz("    adr x19, " + se);
+                    } yoksa {
+                        eger sol[0] == "ID" {
+                            degisken sol_etiket = degisken_bul(sol[1]);
+                            asm_yaz("    adr x1, " + sol_etiket);
+                            asm_yaz("    ldr x19, [x1]");
+                        } yoksa {
+                            kodla_ifade(sol);
+                            asm_yaz("    mov x19, x0");
+                        }
+                    }
+                    eger sag[0] == "STR" {
+                        degisken se2 = yeni_str_etiketi();
+                        asm_str_tanimla(se2, sag[1]);
+                        asm_yaz("    adr x20, " + se2);
+                        asm_yaz("    adr x0, _fmt_str_str");
+                        asm_yaz("    mov x1, x19");
+                        asm_yaz("    mov x2, x20");
+                        asm_yaz("    bl printf");
+                    } yoksa {
+                        eger sag[0] == "ID" {
+                            degisken var_tipi2 = degisken_tip_bul(sag[1]);
+                            eger var_tipi2 == "metin" {
+                                degisken sag_etiket = degisken_bul(sag[1]);
+                                asm_yaz("    adr x1, " + sag_etiket);
+                                asm_yaz("    ldr x20, [x1]");
+                                asm_yaz("    adr x0, _fmt_str_str");
+                                asm_yaz("    mov x1, x19");
+                                asm_yaz("    mov x2, x20");
+                                asm_yaz("    bl printf");
+                            } yoksa {
+                                kodla_ifade(sag);
+                                asm_yaz("    mov x20, x0");
+                                asm_yaz("    adr x0, _fmt_str_sayi");
+                                asm_yaz("    mov x1, x19");
+                                asm_yaz("    mov x2, x20");
+                                asm_yaz("    bl printf");
+                            }
+                        } yoksa {
+                            kodla_ifade(sag);
+                            asm_yaz("    mov x20, x0");
+                            asm_yaz("    adr x0, _fmt_str_sayi");
+                            asm_yaz("    mov x1, x19");
+                            asm_yaz("    mov x2, x20");
+                            asm_yaz("    bl printf");
+                        }
+                    }
+                } yoksa {
+                    kodla_ifade(ifade);
+                    asm_yaz("    mov x19, x0");
+                    asm_yaz("    adr x0, _fmt_sayi");
+                    asm_yaz("    mov x1, x19");
+                    asm_yaz("    bl printf");
+                }
+            }
+        }
+        don 0;
+    }
+
+    eger st == "EGER" {
+        degisken kosul = stmt[1];
+        degisken then_blok = stmt[2][1];
+        degisken else_blok = stmt[3][1];
+        degisken etiket_else = yeni_etiket();
+        degisken etiket_son = yeni_etiket();
+
+        eger kosul[0] == "BINOP" ve (ifade_metin_mi(kosul[2]) veya ifade_metin_mi(kosul[3])) ve (kosul[1] == "==" veya kosul[1] == "!=") {
+            kodla_ifade(kosul[2]);
+            asm_yaz("    mov x19, x0");
+            kodla_ifade(kosul[3]);
+            asm_yaz("    mov x1, x0");
+            asm_yaz("    mov x0, x19");
+            asm_yaz("    bl strcmp");
+            asm_yaz("    cmp x0, #0");
+            eger kosul[1] == "==" {
+                asm_yaz("    b.ne " + etiket_else);
+            } yoksa {
+                asm_yaz("    b.eq " + etiket_else);
+            }
+        } yoksa eger kosul[0] == "BINOP" ve (kosul[1] == "==" veya kosul[1] == "!=" veya kosul[1] == "<" veya kosul[1] == ">" veya kosul[1] == "<=" veya kosul[1] == ">=") {
+            kodla_ifade(kosul[2]);
+            asm_yaz("    mov x22, x0");
+            kodla_ifade(kosul[3]);
+            asm_yaz("    cmp x22, x0");
+            asm_yaz("    " + ters_dal(kosul[1]) + " " + etiket_else);
+        } yoksa {
+            kodla_ifade(kosul);
+            asm_yaz("    cmp x0, #0");
+            asm_yaz("    b.eq " + etiket_else);
+        }
+
+        degisken ti = 0;
+        iken ti < uzunluk(then_blok) {
+            kodla_stmt(then_blok[ti]);
+            ti = ti + 1;
+        }
+        asm_yaz("    b " + etiket_son);
+
+        asm_yaz(etiket_else + ":");
+        degisken ei = 0;
+        iken ei < uzunluk(else_blok) {
+            kodla_stmt(else_blok[ei]);
+            ei = ei + 1;
+        }
+        asm_yaz(etiket_son + ":");
+        don 0;
+    }
+
+    eger st == "IKEN" {
+        degisken dongu_bas = yeni_etiket();
+        degisken dongu_son = yeni_etiket();
+        ekle(_dongu_etiketler, [dongu_bas, dongu_son]);
+        degisken kosul = stmt[1];
+        degisken govde = stmt[2][1];
+
+        asm_yaz(dongu_bas + ":");
+
+        eger kosul[0] == "BINOP" ve (ifade_metin_mi(kosul[2]) veya ifade_metin_mi(kosul[3])) ve (kosul[1] == "==" veya kosul[1] == "!=") {
+            kodla_ifade(kosul[2]);
+            asm_yaz("    mov x19, x0");
+            kodla_ifade(kosul[3]);
+            asm_yaz("    mov x1, x0");
+            asm_yaz("    mov x0, x19");
+            asm_yaz("    bl strcmp");
+            asm_yaz("    cmp x0, #0");
+            eger kosul[1] == "==" {
+                asm_yaz("    b.ne " + dongu_son);
+            } yoksa {
+                asm_yaz("    b.eq " + dongu_son);
+            }
+        } yoksa eger kosul[0] == "BINOP" ve (kosul[1] == "==" veya kosul[1] == "!=" veya kosul[1] == "<" veya kosul[1] == ">" veya kosul[1] == "<=" veya kosul[1] == ">=") {
+            kodla_ifade(kosul[2]);
+            asm_yaz("    mov x22, x0");
+            kodla_ifade(kosul[3]);
+            asm_yaz("    cmp x22, x0");
+            asm_yaz("    " + ters_dal(kosul[1]) + " " + dongu_son);
+        } yoksa {
+            kodla_ifade(kosul);
+            asm_yaz("    cmp x0, #0");
+            asm_yaz("    b.eq " + dongu_son);
+        }
+
+        degisken gi = 0;
+        iken gi < uzunluk(govde) {
+            kodla_stmt(govde[gi]);
+            gi = gi + 1;
+        }
+        asm_yaz("    b " + dongu_bas);
+        asm_yaz(dongu_son + ":");
+        cikar(_dongu_etiketler, uzunluk(_dongu_etiketler) - 1);
+        don 0;
+    }
+
+    eger st == "KIR" {
+        eger uzunluk(_dongu_etiketler) > 0 {
+            asm_yaz("    b " + _dongu_etiketler[uzunluk(_dongu_etiketler) - 1][1]);
+        }
+        don 0;
+    }
+
+    eger st == "DEVAM" {
+        eger uzunluk(_dongu_etiketler) > 0 {
+            asm_yaz("    b " + _dongu_etiketler[uzunluk(_dongu_etiketler) - 1][0]);
+        }
+        don 0;
+    }
+
+    eger st == "IFADE" {
+        kodla_ifade(stmt[1]);
+        don 0;
+    }
+
+    eger st == "FONK" {
+        degisken fn_isim = stmt[1];
+        degisken fn_params = stmt[2];
+        degisken fn_govde = stmt[3][1];
+        degisken eski_asm = _asm_satirlar;
+        degisken eski_yerel = _yerel_degiskenler;
+        degisken eski_offset = _yerel_offset;
+
+        eger _yerel_mod {
+            ekle(_ust_kapsamlar, _yerel_degiskenler);
+        }
+
+        _asm_satirlar = [];
+        _yerel_mod = tuz;
+        _yerel_degiskenler = [];
+        _yerel_offset = 0;
+
+        degisken pi = 0;
+        iken pi < uzunluk(fn_params) {
+            _yerel_offset = _yerel_offset + 8;
+            ekle(_yerel_degiskenler, [fn_params[pi], _yerel_offset, "sayi"]);
+            pi = pi + 1;
+        }
+
+        degisken gi = 0;
+        iken gi < uzunluk(fn_govde) {
+            kodla_stmt(fn_govde[gi]);
+            gi = gi + 1;
+        }
+
+        degisken frame_boyut = (_yerel_offset + 15) - ((_yerel_offset + 15) % 16) + 16;
+        degisken govde_satirlar = _asm_satirlar;
+        _asm_satirlar = [];
+
+        asm_yaz("");
+        asm_yaz(fn_isim + ":");
+        asm_yaz("    stp x29, x30, [sp, #-" + metine(frame_boyut) + "]!");
+        asm_yaz("    mov x29, sp");
+
+        pi = 0;
+        iken pi < uzunluk(fn_params) {
+            asm_yaz("    str x" + metine(pi) + ", [x29, #16+" + metine((pi + 1) * 8) + "]");
+            pi = pi + 1;
+        }
+
+        degisken gsi = 0;
+        iken gsi < uzunluk(govde_satirlar) {
+            asm_yaz(govde_satirlar[gsi]);
+            gsi = gsi + 1;
+        }
+
+        asm_yaz("    ldp x29, x30, [sp], #" + metine(frame_boyut));
+        asm_yaz("    ret");
+
+        degisken fsi = 0;
+        iken fsi < uzunluk(_asm_satirlar) {
+            ekle(_fonk_satirlar, _asm_satirlar[fsi]);
+            fsi = fsi + 1;
+        }
+
+        _asm_satirlar = eski_asm;
+        _yerel_degiskenler = eski_yerel;
+        _yerel_offset = eski_offset;
+
+        eger uzunluk(_ust_kapsamlar) > 0 {
+            degisken yeni_ust = [];
+            degisken ki = 0;
+            iken ki < uzunluk(_ust_kapsamlar) - 1 {
+                ekle(yeni_ust, _ust_kapsamlar[ki]);
+                ki = ki + 1;
+            }
+            _ust_kapsamlar = yeni_ust;
+        } yoksa {
+            _yerel_mod = ters;
+        }
+        don 0;
+    }
+
+    eger st == "DON" {
+        degisken eski_offset2 = _yerel_offset;
+        degisken frame_boyut2 = (eski_offset2 + 15) - ((eski_offset2 + 15) % 16) + 16;
+        kodla_ifade(stmt[1]);
+        asm_yaz("    ldp x29, x30, [sp], #" + metine(frame_boyut2));
+        asm_yaz("    ret");
+        don 0;
+    }
+
+    don 0;
+}
+
+fonk asm_uret(ast_ham) {
+    degisken ast = ast_ham;
+    eger uzunluk(ast_ham) == 2 ve ast_ham[0] == "PROGRAM" {
+        ast = ast_ham[1];
+    }
+    _asm_satirlar = [];
+    _veri_satirlar = [];
+    _degisken_satirlar = [];
+    _fonk_satirlar = [];
+    _str_sayac = 0;
+    _etiket_sayac = 0;
+    _yerel_mod = ters;
+    _yerel_degiskenler = [];
+    _yerel_offset = 0;
+    _dongu_etiketler = [];
+
+    asm_baslik();
+
+    degisken i = 0;
+    iken i < uzunluk(ast) {
+        kodla_stmt(ast[i]);
+        i = i + 1;
+    }
+
+    asm_son();
+
+    degisken sonuc = [];
+    degisken ai = 0;
+    iken ai < uzunluk(_asm_satirlar) {
+        ekle(sonuc, _asm_satirlar[ai]);
+        ai = ai + 1;
+    }
+    degisken vi = 0;
+    iken vi < uzunluk(_veri_satirlar) {
+        ekle(sonuc, _veri_satirlar[vi]);
+        vi = vi + 1;
+    }
+    don sonuc;
+}
+
+fonk zedin_asm_derle(kaynak_dosya, cikti_dosya) {
+    yaz "Okunuyor: " + kaynak_dosya;
+    degisken icerik_sonuc = oku_dosya(kaynak_dosya);
+    eger hata_mi(icerik_sonuc) {
+        yaz "[HATA] Dosya okunamadi: " + kaynak_dosya;
+        don ters;
+    }
+    degisken kaynak = deger_al(icerik_sonuc);
+    degisken ast = zedin_parse(kaynak);
+    degisken asm_satirlar = asm_uret(ast);
+    degisken icerik = "";
+    degisken i = 0;
+    iken i < uzunluk(asm_satirlar) {
+        icerik = icerik + asm_satirlar[i] + "\n";
+        i = i + 1;
+    }
+    dosya_yaz(cikti_dosya, icerik);
+    yaz "Derleme tamamlandi: " + cikti_dosya;
+    don tuz;
+}
+

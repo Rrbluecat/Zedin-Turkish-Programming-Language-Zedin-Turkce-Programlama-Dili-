@@ -1,0 +1,28 @@
+// 1. Tamsayılar ve Ondalık Sayılar
+degisken sayi1 = 42;
+degisken sayi2 = 3.14;
+
+// 2. Karmaşık Metinler ve Karakterler
+degisken metin1 = "Zedin Dili 2026!";
+degisken metin2 = "Tırnak ve boşluk testi";
+
+// 3. Karşılaştırma ve Mantıksal Operatörler
+eger (sayi1 >= 40 ve sayi2 <= 5.0) {
+    yaz "Karşılaştırmalar Başarılı!";
+} yoksa {
+    yaz "Hata!";
+}
+
+// 4. Fonksiyon ve Döngü
+fonk test_fonk(a, b) {
+    don a + b * 2;
+}
+
+degisken i = 0;
+iken (i < 3) {
+    yaz "Döngü adımı:";
+    yaz i;
+    i = i + 1;
+}
+
+yaz "Tüm Lexer Testleri Tamamlandı!";

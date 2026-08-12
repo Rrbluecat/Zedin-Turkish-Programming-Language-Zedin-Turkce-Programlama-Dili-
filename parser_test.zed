@@ -1,0 +1,36 @@
+// 1. Operatör Önceliği ve Parantez Testi
+degisken x = 10 + 2 * 5;          // Beklenen: 20 (Önce çarpma)
+degisken y = (10 + 2) * 5;        // Beklenen: 60 (Önce parantez)
+
+yaz "--- 1. Islem Onceligi Testi ---";
+yaz x;
+yaz y;
+
+// 2. Özyinelemeli Fonksiyon Testi
+fonk faktoriyel(n) {
+    eger (n <= 1) {
+        don 1;
+    }
+    don n * faktoriyel(n - 1);
+}
+
+yaz "--- 2. Özyineleme (Faktöriyel 5) ---";
+yaz faktoriyel(5);               // Beklenen: 120
+
+// 3. Karmaşık İç İçe Blok Yapısı
+yaz "--- 3. Ic Ice Bloklar ---";
+degisken a = 0;
+iken (a < 2) {
+    degisken b = 0;
+    iken (b < 2) {
+        eger (a == b) {
+            yaz "Esitlik yakalandi";
+        } yoksa {
+            yaz "Farkli degerler";
+        }
+        b = b + 1;
+    }
+    a = a + 1;
+}
+
+yaz "--- Parser Testi Bitti ---";

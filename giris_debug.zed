@@ -1,0 +1,3 @@
+yaz tuz;
+degisken m = "zedin";
+yaz m[0];

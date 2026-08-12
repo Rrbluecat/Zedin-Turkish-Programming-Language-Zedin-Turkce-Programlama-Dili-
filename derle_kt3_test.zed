@@ -1,0 +1,4 @@
+aktar "lexer.zed";
+aktar "parser.zed";
+aktar "asm_backend.zed";
+zedin_asm_derle("test_karsilastirma_uc.zed", "test_kt3.s");

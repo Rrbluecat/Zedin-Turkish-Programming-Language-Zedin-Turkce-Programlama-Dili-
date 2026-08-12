@@ -1,0 +1,2 @@
+aktar "asm_backend.zed";
+zedin_asm_derle("giris_debug.zed", "debug.s");

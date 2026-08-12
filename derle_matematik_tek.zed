@@ -1,0 +1,6 @@
+aktar "lexer.zed";
+aktar "parser.zed";
+aktar "asm_backend.zed";
+
+yaz "=== matematik.zed tek basina test ===";
+zedin_asm_derle("matematik.zed", "matematik_test.s");
